@@ -20,5 +20,6 @@ export const ROUTE_ROLES = {
   '/reports':       [ROLES.DISTRIBUTOR, ROLES.RETAILER, ROLES.STAFF],
   '/inquiry':       [ROLES.DISTRIBUTOR, ROLES.RETAILER, ROLES.STAFF],
   '/attendance':    [ROLES.DISTRIBUTOR, ROLES.RETAILER],
+  '/tasks':          [ROLES.DISTRIBUTOR],
   '/settings':      [ROLES.DISTRIBUTOR, ROLES.RETAILER, ROLES.STAFF, ROLES.FARMER],
 };

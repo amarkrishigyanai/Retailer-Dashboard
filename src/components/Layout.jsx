@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Package, ShoppingCart, Archive,
   ShoppingBag, Ticket, Users, BarChart3, Settings,
   LogOut, Menu, Bell, Search, ChevronDown, X,
-  Megaphone, User, KeyRound, BookOpen, ImagePlus, FileText, MessageSquare, CalendarCheck,
+  Megaphone, User, KeyRound, BookOpen, ImagePlus, FileText, MessageSquare, CalendarCheck, ClipboardList,
 } from 'lucide-react';
 import { fetchMe } from '../store/thunks/layoutThunk';
 import { fetchBroadcastHistory } from '../store/thunks/broadcastThunk';
@@ -35,6 +35,7 @@ const menuItems = [
   { icon: BarChart3,   label: 'Reports',         path: '/reports' },
   { icon: MessageSquare, label: 'Inquiries',      path: '/inquiry' },
   { icon: CalendarCheck,  label: 'Attendance',     path: '/attendance' },
+  { icon: ClipboardList,  label: 'Tasks',           path: '/tasks' },
   { icon: Settings,        label: 'Settings',          path: '/settings' },
 ];
 

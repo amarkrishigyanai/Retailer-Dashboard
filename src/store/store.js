@@ -19,6 +19,7 @@ import advertisementReducer from './slices/advertisementSlice';
 import orderReducer from './slices/orderSlice';
 import inquiryReducer from './slices/inquirySlice';
 import attendanceReducer from './slices/attendanceSlice';
+import taskReducer from './slices/taskSlice';
 
 export const store = configureStore({
   reducer: {
@@ -42,5 +43,6 @@ export const store = configureStore({
     orders: orderReducer,
     inquiry: inquiryReducer,
     attendance: attendanceReducer,
+    tasks: taskReducer,
   },
 });

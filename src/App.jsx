@@ -25,6 +25,7 @@ const Ledger       = lazy(() => import('./pages/Ledger'));
 const Advertisement = lazy(() => import('./pages/Advertisement'));
 const Inquiry       = lazy(() => import('./pages/Inquiry'));
 const Attendance    = lazy(() => import('./pages/Attendance'));
+const Tasks         = lazy(() => import('./pages/Tasks'));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center h-64">
@@ -64,6 +65,7 @@ function App() {
             <Route path="settings"     element={<ProtectedRoute allowedRoles={ROUTE_ROLES['/settings']}><Suspense fallback={<PageLoader />}><Settings /></Suspense></ProtectedRoute>} />
             <Route path="inquiry"      element={<ProtectedRoute allowedRoles={ROUTE_ROLES['/inquiry']}><Suspense fallback={<PageLoader />}><Inquiry /></Suspense></ProtectedRoute>} />
             <Route path="attendance"   element={<ProtectedRoute allowedRoles={ROUTE_ROLES['/attendance']}><Suspense fallback={<PageLoader />}><Attendance /></Suspense></ProtectedRoute>} />
+            <Route path="tasks"        element={<ProtectedRoute allowedRoles={ROUTE_ROLES['/tasks']}><Suspense fallback={<PageLoader />}><Tasks /></Suspense></ProtectedRoute>} />
           </Route>
         </Routes>
       </BrowserRouter>
