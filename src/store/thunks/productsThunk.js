@@ -13,6 +13,18 @@ export const fetchProducts = createAsyncThunk(
   }
 );
 
+export const fetchCropListings = createAsyncThunk(
+  'products/fetchCropListings',
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await api.get('/crop-listing/getListings');
+      return res.data?.data || [];
+    } catch (err) {
+      return rejectWithValue('Failed to fetch crop listings');
+    }
+  }
+);
+
 export const deleteListing = createAsyncThunk(
   'products/delete',
   async (id, { rejectWithValue }) => {

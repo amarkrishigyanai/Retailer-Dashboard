@@ -7,22 +7,62 @@
    To change theme: edit only these values
 ───────────────────────────────────────── */
 :root {
-  --brand-50:  #f0fdf4;
-  --brand-100: #dcfce7;
-  --brand-200: #bbf7d0;
-  --brand-300: #86efac;
-  --brand-400: #4ade80;
-  --brand-500: #22c55e;
-  --brand-600: #16a34a;
-  --brand-700: #15803d;
-  --brand-800: #166534;
-  --brand-900: #14532d;
+  /* Primary — Mint Green */
+  --brand-50:  #E8F8F1;
+  --brand-100: #C6EFD9;
+  --brand-200: #9DE3BF;
+  --brand-300: #6DD4A3;
+  --brand-400: #3ECF8E;
+  --brand-500: #2BB57A;
+  --brand-600: #229B67;
+  --brand-700: #1A7D53;
+  --brand-800: #12603F;
+  --brand-900: #0A422B;
+
+  /* Secondary — Soft Green */
+  --green-50:  #F0FBF6;
+  --green-100: #D4F3E5;
+  --green-200: #A8E7CB;
+  --green-300: #6DD4A3;
+  --green-400: #3ECF8E;
+  --green-500: #2BB57A;
+  --green-600: #229B67;
+  --green-700: #1A7D53;
+  --green-800: #12603F;
+  --green-900: #0A422B;
+
+  /* Base — Light Mint */
+  --cream-100: #F0FBF6;
+  --cream-200: #C6EFD9;
+
+  /* Accent — Teal */
+  --sky-300: #6DD4A3;
+  --sky-400: #3ECF8E;
+
+  /* Text */
+  --text-heading:     #1a2e22;
+  --text-body:        #2d5040;
+  --text-muted:       #4a7a62;
+  --text-placeholder: #8ab8a0;
+
+  /* Legacy aliases */
+  --color-page-bg:        var(--green-50);
+  --color-card:           var(--brand-400);
+  --color-card-deep:      var(--brand-600);
+  --color-team-card:      var(--green-400);
+  --color-sidebar-active: var(--cream-200);
+  --color-cta:            var(--sky-300);
+  --color-heading:        var(--text-heading);
+  --color-body:           var(--text-muted);
 }
 
 /* Kill Google Translate body shift & banner */
 body {
   top: 0 !important;
   position: static !important;
+  background-color: #6fcf97;
+  font-family: 'Nunito', sans-serif;
+  color: #1a2e22;
 }
 .skiptranslate,
 #goog-gt-tt,
@@ -39,3 +79,55 @@ body {
 *::-webkit-scrollbar {
   display: none;
 }
+
+/* ─── GLOBAL SURFACE COLORS ─────────────────────────────── */
+.bg-white { background-color: #ffffff !important; }
+.bg-gray-50 { background-color: #ffffff !important; }
+.bg-gray-100 { background-color: #f5f5f5 !important; }
+.bg-gray-200 { background-color: #C6EFD9 !important; }
+
+thead tr, .bg-gray-50\/80 { background-color: #E8F8F1 !important; }
+
+.rounded-2xl.bg-white,
+.rounded-xl.bg-white,
+.rounded-t-2xl.bg-white { background-color: #ffffff !important; }
+
+button, a, input, select, textarea {
+  transition: all 0.15s ease;
+  font-family: 'Nunito', sans-serif;
+}
+
+/* ─── GLOBAL TEXT COLORS ─────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 { color: #1a2e22; }
+p, span, li, td, th, label { color: #2d5040; }
+.text-gray-900, .text-gray-800 { color: #1a2e22 !important; }
+.text-gray-700, .text-gray-600 { color: #2d5040 !important; }
+.text-gray-500, .text-gray-400 { color: #4a7a62 !important; }
+.text-gray-300 { color: #8ab8a0 !important; }
+
+/* ─── CARD / SURFACE ─────────────────────────────────────── */
+.bg-white { background-color: #ffffff !important; }
+
+/* ─── SKELETON PULSE ─────────────────────────────────────── */
+@keyframes green-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
+}
+.animate-pulse { animation: green-pulse 1.8s cubic-bezier(0.4,0,0.6,1) infinite; }
+
+thead tr {
+  background-color: #E8F8F1;
+}
+
+tbody tr:hover {
+  background-color: rgba(62, 207, 142, 0.08);
+}
+
+tbody tr {
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.badge-success  { background-color: #C6EFD9; color: #12603F; border-radius: 99px; font-size: 11px; font-weight: 700; padding: 3px 10px; }
+.badge-warning  { background-color: #fef3c7; color: #92400e; border-radius: 99px; font-size: 11px; font-weight: 700; padding: 3px 10px; }
+.badge-danger   { background-color: #fee2e2; color: #991b1b; border-radius: 99px; font-size: 11px; font-weight: 700; padding: 3px 10px; }
+.badge-info     { background-color: #dbeafe; color: #1e40af; border-radius: 99px; font-size: 11px; font-weight: 700; padding: 3px 10px; }

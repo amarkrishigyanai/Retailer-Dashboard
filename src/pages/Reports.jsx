@@ -32,6 +32,7 @@ import {
 
 import theme from '../config/theme';
 
+const ALLOWED_ORIGIN = new URL(theme.apiBase).origin;
 const PAGE_SIZE = 6;
 
 /* ── Toast ── */
@@ -226,6 +227,11 @@ const Reports = () => {
   const handleDownload = async (url, fileName) => {
     try {
       const isAbsolute = url?.startsWith("http");
+      if (isAbsolute && !url.startsWith(ALLOWED_ORIGIN)) {
+        window.open(url, "_blank", "noopener,noreferrer");
+        showToast(`Opening "${fileName || "document"}"…`);
+        return;
+      }
       const res = isAbsolute
         ? await axios.get(url, { responseType: "blob" })
         : await api.get(url, { responseType: "blob" });
@@ -243,7 +249,7 @@ const Reports = () => {
       showToast(`Downloaded "${fileName || "document"}"`);
     } catch (err) {
       // Last resort — open in new tab
-      window.open(url, "_blank");
+      window.open(url, "_blank", "noopener,noreferrer");
       showToast(`Opening "${fileName || "document"}"…`);
     }
   };

@@ -9,7 +9,6 @@ import {
   fetchLedgerByType,
   recordFarmerPayment,
   recordFpoPayment,
-  fetchPaymentBalance,
 } from "../store/thunks/ledgerThunk";
 import {
   BookOpen,
@@ -33,16 +32,6 @@ import {
   Building2,
 } from "lucide-react";
 
-const TYPES = [
-  { value: "ALL", label: "All" },
-  { value: "PROCUREMENT", label: "Procurement" },
-  { value: "PROCUREMENT_PAYMENT", label: "Procurement Payment" },
-  { value: "SALE", label: "Sale" },
-  { value: "PAYMENT", label: "Payment" },
-  { value: "REFUND", label: "Refund" },
-  { value: "ADJUSTMENT", label: "Adjustment" },
-];
-
 const TYPE_COLORS = {
   PROCUREMENT: "bg-blue-100 text-blue-700",
   PROCUREMENT_PAYMENT: "bg-purple-100 text-purple-700",
@@ -60,6 +49,19 @@ const fmtDate = (v) => {
   return d.toLocaleDateString("en-IN");
 };
 const ITEMS_PER_PAGE = 10;
+
+// Cleanup 9: single source of truth for entry status — was copy-pasted 3 times
+const getEntryStatus = (type, ref) => {
+  if (ref === 'PROCUREMENT')         return { label: 'Pay Pending',        cls: 'bg-red-100 text-red-700',     bar: 'bg-red-400' };
+  if (ref === 'PROCUREMENT_PAYMENT') return { label: 'Paid to Farmer',     cls: 'bg-brand-100 text-brand-700', bar: 'bg-brand-500' };
+  if (ref === 'SALE')                return { label: 'Collect Pending',    cls: 'bg-brand-100 text-brand-700', bar: 'bg-brand-500' };
+  if (ref === 'REFUND')              return { label: 'Refund',             cls: 'bg-red-100 text-red-700',     bar: 'bg-red-400' };
+  if (ref === 'ADJUSTMENT')          return { label: 'Adjustment',         cls: 'bg-gray-100 text-gray-600',   bar: 'bg-gray-400' };
+  if (ref === 'PAYMENT') return type === 'CREDIT'
+    ? { label: 'Received from Farmer', cls: 'bg-brand-100 text-brand-700', bar: 'bg-brand-500' }
+    : { label: 'Paid to Farmer',       cls: 'bg-red-100 text-red-700',     bar: 'bg-red-400' };
+  return { label: ref || '—', cls: 'bg-gray-100 text-gray-500', bar: 'bg-gray-300' };
+};
 
 const exportCSV = (data) => {
   const headers = [
@@ -230,10 +232,12 @@ const SortIcon = ({ field, sortField, sortDir }) => {
 export default function Ledger() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { entries: rawEntries = [], loading } = useSelector((s) => s.ledger);
+  const { allEntries, entries: rawEntries = [], loading, paymentLoading } = useSelector((s) => s.ledger);
+  // Bug 1 fix: Farmer Balance & Monthly tabs use allEntries (never filtered by type)
   const entries = Array.isArray(rawEntries) ? rawEntries : [];
+  const allEntriesSafe = Array.isArray(allEntries) ? allEntries : [];
   const [activeType, setActiveType] = useState("ALL");
-  const [creditDebitFilter, setCreditDebitFilter] = useState("ALL");
+  const [creditDebitFilter, setCreditDebitFilter] = useState("ALL"); // kept for filter logic compatibility
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
   const [fromDate, setFromDate] = useState("");
@@ -243,6 +247,10 @@ export default function Ledger() {
   const [sortField, setSortField] = useState("date");
   const [sortDir, setSortDir] = useState("desc");
   const [activeTab, setActiveTab] = useState("farmers");
+  // Feature 6: quick date presets
+  const [activePreset, setActivePreset] = useState('all');
+  // Fix 5: year filter for monthly chart
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [payModal, setPayModal] = useState(null); // { user, mode: 'farmer'|'fpo' }
   const [payAmount, setPayAmount] = useState("");
   const [payMethod, setPayMethod] = useState("CASH");
@@ -250,6 +258,14 @@ export default function Ledger() {
   const [payError, setPayError] = useState("");
   const [payBalance, setPayBalance] = useState(null);
   const [payBalanceLoading, setPayBalanceLoading] = useState(false);
+
+  // Calculate balance locally from allEntriesSafe — instant, no API call needed
+  const calcLocalBalance = (userId) => {
+    const userTxns = allEntriesSafe.filter(e => e.user?._id === userId);
+    const credit = userTxns.reduce((s, e) => s + (e.type === 'CREDIT' ? Number(e.amount || 0) : 0), 0);
+    const debit  = userTxns.reduce((s, e) => s + (e.type === 'DEBIT'  ? Number(e.amount || 0) : 0), 0);
+    return credit - debit; // positive = FPO owes farmer, negative = farmer owes FPO
+  };
   const [payConfirm, setPayConfirm] = useState(false);
   const [paySuccess, setPaySuccess] = useState(null);
   const [toast, setToast] = useState(null);
@@ -270,13 +286,8 @@ export default function Ledger() {
     setCurrentPage(1);
   };
 
-  // active filter count
-  const activeFilterCount = [
-    search,
-    fromDate,
-    toDate,
-    creditDebitFilter !== "ALL" ? creditDebitFilter : "",
-  ].filter(Boolean).length;
+  // active filter count (used for clear button visibility)
+  const activeFilterCount = [search, fromDate, toDate].filter(Boolean).length;
 
   const filtered = useMemo(() => {
     let result = entries.filter((e) => {
@@ -375,6 +386,30 @@ export default function Ledger() {
     setToDate("");
     setCreditDebitFilter("ALL");
     setCurrentPage(1);
+    setActivePreset('all');
+  };
+
+  // Feature 6: apply quick date preset
+  const applyPreset = (preset) => {
+    setActivePreset(preset);
+    setCurrentPage(1);
+    const now = new Date();
+    const toStr = now.toISOString().split('T')[0];
+    if (preset === 'today') {
+      setFromDate(toStr); setToDate(toStr);
+    } else if (preset === 'week') {
+      const from = new Date(now); from.setDate(now.getDate() - 6);
+      setFromDate(from.toISOString().split('T')[0]); setToDate(toStr);
+    } else if (preset === 'month') {
+      const from = new Date(now.getFullYear(), now.getMonth(), 1);
+      setFromDate(from.toISOString().split('T')[0]); setToDate(toStr);
+    } else if (preset === 'lastmonth') {
+      const from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const to   = new Date(now.getFullYear(), now.getMonth(), 0);
+      setFromDate(from.toISOString().split('T')[0]); setToDate(to.toISOString().split('T')[0]);
+    } else {
+      setFromDate(''); setToDate('');
+    }
   };
 
   // ── Farmer-wise balance sheet ──────────────────────────────────────────────
@@ -387,7 +422,8 @@ export default function Ledger() {
 
   const farmerBalances = useMemo(() => {
     const map = {};
-    entries.forEach((e) => {
+    // Bug 1 fix: use allEntriesSafe so type filter never corrupts this tab
+    allEntriesSafe.forEach((e) => {
       const id = e.user?._id;
       if (!id) return;
       if (!map[id])
@@ -512,7 +548,10 @@ export default function Ledger() {
 
   const monthlyData = useMemo(() => {
     const map = {};
-    entries.forEach((e) => {
+    // Bug 1 fix + Fix 5: use allEntriesSafe and filter by selectedYear
+    allEntriesSafe
+      .filter((e) => new Date(e.createdAt).getFullYear() === selectedYear)
+      .forEach((e) => {
       const d = new Date(e.createdAt);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       const label = d.toLocaleString("en-IN", {
@@ -657,96 +696,77 @@ export default function Ledger() {
               ))}
             </div>
 
-            {/* FILTERS ROW */}
+            {/* Feature 6: Quick date presets */}
             <div className="flex flex-wrap items-center gap-2">
-              <div className="relative flex-1 min-w-[160px]">
-                <Search className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="w-full py-2 pr-3 text-sm border rounded-lg pl-9 focus:outline-none focus:ring-2 focus:ring-brand-500"
-                />
-              </div>
-              <div className="flex items-center gap-1 flex-wrap">
-                <input
-                  type="date"
-                  value={fromDate}
-                  onChange={(e) => {
-                    setFromDate(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="px-2 py-2 text-xs sm:text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 w-32 sm:w-auto"
-                />
-                <span className="text-xs text-gray-400">to</span>
-                <input
-                  type="date"
-                  value={toDate}
-                  onChange={(e) => {
-                    setToDate(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="px-2 py-2 text-xs sm:text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 w-32 sm:w-auto"
-                />
-              </div>
-              <div className="flex items-center gap-1">
-                {[
-                  { f: "ALL", l: "All" },
-                  { f: "CREDIT", l: "Pay" },
-                  { f: "DEBIT", l: "Collect" },
-                ].map(({ f, l }) => (
-                  <button
-                    key={f}
-                    onClick={() => {
-                      setCreditDebitFilter(f);
-                      setCurrentPage(1);
-                    }}
-                    className={`px-3 py-2 rounded-lg text-xs font-medium transition ${
-                      creditDebitFilter === f
-                        ? f === "CREDIT"
-                          ? "bg-red-500 text-white"
-                          : f === "DEBIT"
-                            ? "bg-brand-600 text-white"
-                            : "bg-gray-800 text-white"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
-                  >
-                    {l}
-                  </button>
-                ))}
-                {activeFilterCount > 0 && (
-                  <button
-                    onClick={clearAll}
-                    className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-red-500 bg-red-50 rounded-lg hover:bg-red-100"
-                  >
-                    <X className="w-3 h-3" /> Clear
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* TYPE FILTER */}
-            <div className="flex flex-wrap gap-2">
-              {TYPES.map(({ value, label }) => (
+              {[
+                { id: 'all',       label: 'All Time' },
+                { id: 'today',     label: 'Today' },
+                { id: 'week',      label: 'This Week' },
+                { id: 'month',     label: 'This Month' },
+                { id: 'lastmonth', label: 'Last Month' },
+              ].map(({ id, label }) => (
                 <button
-                  key={value}
-                  onClick={() => {
-                    setActiveType(value);
-                    setCurrentPage(1);
-                  }}
+                  key={id}
+                  onClick={() => applyPreset(id)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                    activeType === value
-                      ? "bg-gray-800 text-white"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    activePreset === id ? 'bg-brand-700 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
                   {label}
                 </button>
               ))}
+              <div className="flex items-center gap-1 ml-auto">
+                <input type="date" value={fromDate}
+                  onChange={(e) => { setFromDate(e.target.value); setActivePreset('custom'); setCurrentPage(1); }}
+                  className="px-2 py-1.5 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+                <span className="text-xs text-gray-400">to</span>
+                <input type="date" value={toDate}
+                  onChange={(e) => { setToDate(e.target.value); setActivePreset('custom'); setCurrentPage(1); }}
+                  className="px-2 py-1.5 text-xs border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+            </div>
+
+            {/* Fix 4: merged search + type + credit/debit into one row */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="relative flex-1 min-w-[160px]">
+                <Search className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
+                <input
+                  type="text" placeholder="Search name or phone..."
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+                  className="w-full py-2 pr-3 text-sm border rounded-lg pl-9 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+              {/* Fix 4: combined type + direction filter */}
+              <div className="flex flex-wrap gap-1">
+                {[
+                  { value: 'ALL',                  label: 'All' },
+                  { value: 'PROCUREMENT',          label: 'Procurement' },
+                  { value: 'PROCUREMENT_PAYMENT',  label: 'Pmnt Payment' },
+                  { value: 'SALE',                 label: 'Sale' },
+                  { value: 'PAYMENT',              label: 'Payment' },
+                  { value: 'REFUND',               label: 'Refund' },
+                  { value: 'ADJUSTMENT',           label: 'Adjustment' },
+                ].map(({ value, label }) => (
+                  <button key={value}
+                    onClick={() => { setActiveType(value); setCurrentPage(1); }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                      activeType === value ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {(search || fromDate || toDate || activeType !== 'ALL') && (
+                <button onClick={clearAll}
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-500 bg-red-50 rounded-lg hover:bg-red-100"
+                >
+                  <X className="w-3 h-3" /> Clear
+                </button>
+              )}
             </div>
 
             {/* TABLE — desktop / CARDS — mobile */}
@@ -778,53 +798,8 @@ export default function Ledger() {
                         const ref = entry.referenceType;
                         const initials =
                           `${entry.user?.firstName?.charAt(0) || ""}${entry.user?.lastName?.charAt(0) || ""}`.toUpperCase();
-                        const statusMap = {
-                          PROCUREMENT: {
-                            label: "Pay Pending",
-                            cls: "bg-red-100 text-red-700",
-                            bar: "bg-red-400",
-                          },
-                          PROCUREMENT_PAYMENT: {
-                            label: "Paid to Farmer",
-                            cls: "bg-brand-100 text-brand-700",
-                            bar: "bg-brand-500",
-                          },
-                          SALE: {
-                            label: "Collect Pending",
-                            cls: "bg-brand-100 text-brand-700",
-                            bar: "bg-brand-500",
-                          },
-                          REFUND: {
-                            label: "Refund",
-                            cls: "bg-red-100 text-red-700",
-                            bar: "bg-red-400",
-                          },
-                          ADJUSTMENT: {
-                            label: "Adjustment",
-                            cls: "bg-gray-100 text-gray-600",
-                            bar: "bg-gray-400",
-                          },
-                        };
-                        const paymentStatus =
-                          ref === "PAYMENT"
-                            ? entry.type === "CREDIT"
-                              ? {
-                                  label: "Received",
-                                  cls: "bg-brand-100 text-brand-700",
-                                  bar: "bg-brand-500",
-                                }
-                              : {
-                                  label: "Paid Out",
-                                  cls: "bg-red-100 text-red-700",
-                                  bar: "bg-red-400",
-                                }
-                            : null;
-                        const status = paymentStatus ||
-                          statusMap[ref] || {
-                            label: ref || "—",
-                            cls: "bg-gray-100 text-gray-500",
-                            bar: "bg-gray-300",
-                          };
+                        // Cleanup 9: use shared helper
+                        const status = getEntryStatus(entry.type, ref);
                         const isPositive =
                           ref === "PROCUREMENT_PAYMENT" ||
                           (ref === "PAYMENT" && entry.type === "CREDIT") ||
@@ -832,18 +807,11 @@ export default function Ledger() {
                         return (
                           <div
                             key={entry._id || i}
-                            onClick={() => {
-                              setSelectedUser(entry.user);
-                              setShowHistory(false);
-                            }}
+                            onClick={() => { setSelectedUser(entry.user); setShowHistory(false); }}
                             className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors"
                           >
-                            <div
-                              className={`w-1 h-12 rounded-r-full flex-shrink-0 ${status.bar}`}
-                            />
-                            <div
-                              className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold bg-gray-100 text-gray-700`}
-                            >
+                            <div className={`w-1 h-12 rounded-r-full flex-shrink-0 ${status.bar}`} />
+                            <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold bg-gray-100 text-gray-700`}>
                               {initials || "?"}
                             </div>
                             <div className="flex-1 min-w-0">
@@ -851,21 +819,14 @@ export default function Ledger() {
                                 {entry.user?.firstName} {entry.user?.lastName}
                               </p>
                               <div className="flex items-center gap-1.5 mt-0.5">
-                                <span
-                                  className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${status.cls}`}
-                                >
+                                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${status.cls}`}>
                                   {status.label}
                                 </span>
-                                <span className="text-[10px] text-gray-400">
-                                  {fmtDate(entry.createdAt)}
-                                </span>
+                                <span className="text-[10px] text-gray-400">{fmtDate(entry.createdAt)}</span>
                               </div>
                             </div>
-                            <p
-                              className={`text-sm font-bold flex-shrink-0 ${isPositive ? "text-brand-600" : "text-red-600"}`}
-                            >
-                              {isPositive ? "+" : "-"}
-                              {fmt(entry.amount)}
+                            <p className={`text-sm font-bold flex-shrink-0 ${isPositive ? "text-brand-600" : "text-red-600"}`}>
+                              {isPositive ? "+" : "-"}{fmt(entry.amount)}
                             </p>
                           </div>
                         );
@@ -903,62 +864,24 @@ export default function Ledger() {
                               sortDir={sortDir}
                             />
                           </th>
+                          <th className="px-4 py-3 text-right text-blue-500">Running Bal</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y">
-                        {filtered
+                        {(() => {
+                          // Feature 7: compute running balance across full filtered set
+                          let running = 0;
+                          const withRunning = filtered.map((e) => {
+                            running += e.type === 'CREDIT' ? Number(e.amount || 0) : -Number(e.amount || 0);
+                            return { ...e, runningBalance: running };
+                          });
+                          return withRunning
                           .slice(start, start + ITEMS_PER_PAGE)
                           .map((entry, i) => {
                             const ref = entry.referenceType;
                             const initials =
                               `${entry.user?.firstName?.charAt(0) || ""}${entry.user?.lastName?.charAt(0) || ""}`.toUpperCase();
-                            const statusMap = {
-                              PROCUREMENT: {
-                                label: "Pay Pending",
-                                cls: "bg-red-100 text-red-700",
-                                bar: "bg-red-400",
-                              },
-                              PROCUREMENT_PAYMENT: {
-                                label: "Paid to Farmer",
-                                cls: "bg-brand-100 text-brand-700",
-                                bar: "bg-brand-500",
-                              },
-                              SALE: {
-                                label: "Collect Pending",
-                                cls: "bg-brand-100 text-brand-700",
-                                bar: "bg-brand-500",
-                              },
-                              REFUND: {
-                                label: "Refund",
-                                cls: "bg-red-100 text-red-700",
-                                bar: "bg-red-400",
-                              },
-                              ADJUSTMENT: {
-                                label: "Adjustment",
-                                cls: "bg-gray-100 text-gray-600",
-                                bar: "bg-gray-400",
-                              },
-                            };
-                            const paymentStatus =
-                              ref === "PAYMENT"
-                                ? entry.type === "CREDIT"
-                                  ? {
-                                      label: "Received from Farmer",
-                                      cls: "bg-brand-100 text-brand-700",
-                                      bar: "bg-brand-500",
-                                    }
-                                  : {
-                                      label: "Paid to Farmer",
-                                      cls: "bg-red-100 text-red-700",
-                                      bar: "bg-red-400",
-                                    }
-                                : null;
-                            const status = paymentStatus ||
-                              statusMap[ref] || {
-                                label: ref || "—",
-                                cls: "bg-gray-100 text-gray-500",
-                                bar: "bg-gray-300",
-                              };
+                            const status = getEntryStatus(entry.type, ref);
                             return (
                               <tr
                                 key={entry._id || i}
@@ -969,9 +892,7 @@ export default function Ledger() {
                                 className="cursor-pointer hover:bg-gray-50 transition-colors"
                               >
                                 <td className="pl-0 pr-2 py-3 w-1">
-                                  <div
-                                    className={`w-1 h-10 rounded-r-full ${status.bar}`}
-                                  />
+                                  <div className={`w-1 h-10 rounded-r-full ${status.bar}`} />
                                 </td>
                                 <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">
                                   {fmtDate(entry.createdAt)}
@@ -983,52 +904,42 @@ export default function Ledger() {
                                     </div>
                                     <div>
                                       <p className="font-semibold text-gray-800 text-sm leading-tight">
-                                        {entry.user?.firstName}{" "}
-                                        {entry.user?.lastName}
+                                        {entry.user?.firstName}{" "}{entry.user?.lastName}
                                       </p>
-                                      <p className="text-xs text-gray-400">
-                                        {entry.user?.phone}
-                                      </p>
+                                      <p className="text-xs text-gray-400">{entry.user?.phone}</p>
                                     </div>
                                   </div>
                                 </td>
                                 <td className="px-4 py-3">
-                                  <span
-                                    className={`px-2 py-0.5 rounded-full text-xs font-semibold ${status.cls}`}
-                                  >
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${status.cls}`}>
                                     {status.label}
                                   </span>
                                 </td>
                                 <td className="px-4 py-3">
-                                  <span
-                                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_COLORS[entry.referenceType] || "bg-gray-100 text-gray-500"}`}
-                                  >
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${TYPE_COLORS[entry.referenceType] || "bg-gray-100 text-gray-500"}`}>
                                     {entry.referenceType || "—"}
                                   </span>
                                 </td>
                                 <td className="px-4 py-3 text-right">
-                                  <span
-                                    className={`text-sm font-bold ${
-                                      ref === "PROCUREMENT_PAYMENT" ||
-                                      (ref === "PAYMENT" &&
-                                        entry.type === "CREDIT") ||
-                                      ref === "SALE"
-                                        ? "text-brand-600"
-                                        : "text-red-600"
-                                    }`}
-                                  >
-                                    {ref === "PROCUREMENT_PAYMENT" ||
-                                    (ref === "PAYMENT" &&
-                                      entry.type === "CREDIT") ||
-                                    ref === "SALE"
-                                      ? "+"
-                                      : "-"}
+                                  <span className={`text-sm font-bold ${
+                                    ref === 'PROCUREMENT_PAYMENT' || (ref === 'PAYMENT' && entry.type === 'CREDIT') || ref === 'SALE'
+                                      ? 'text-brand-600' : 'text-red-600'
+                                  }`}>
+                                    {ref === 'PROCUREMENT_PAYMENT' || (ref === 'PAYMENT' && entry.type === 'CREDIT') || ref === 'SALE' ? '+' : '-'}
                                     {fmt(entry.amount)}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <span className={`text-xs font-semibold tabular-nums ${
+                                    entry.runningBalance >= 0 ? 'text-blue-600' : 'text-red-500'
+                                  }`}>
+                                    {entry.runningBalance >= 0 ? '' : '-'}{fmt(Math.abs(entry.runningBalance))}
                                   </span>
                                 </td>
                               </tr>
                             );
-                          })}
+                          });
+                        })()}
                       </tbody>
                     </table>
                   </div>
@@ -1566,31 +1477,6 @@ export default function Ledger() {
                             >
                               <FileText className="w-4 h-4" /> Print PDF
                             </button>
-                            {row.net !== 0 && (
-                              <button
-                                onClick={() => {
-                                  setPayModal({
-                                    user: row.user,
-                                    mode: row.net > 0 ? "fpo" : "farmer",
-                                  });
-                                  setPayAmount("");
-                                  setPayMethod("CASH");
-                                  setPayError("");
-                                  setPayConfirm(false);
-                                  setPayBalance(null);
-                                  setPayBalanceLoading(true);
-                                  dispatch(
-                                    fetchPaymentBalance(row.user._id),
-                                  ).then((r) => {
-                                    setPayBalance(r.payload);
-                                    setPayBalanceLoading(false);
-                                  });
-                                }}
-                                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-500 hover:opacity-90 transition"
-                              >
-                                <Banknote className="w-4 h-4" /> Settle Payment
-                              </button>
-                            )}
                           </div>
 
                           {/* Transaction timeline — Paytm style */}
@@ -1615,70 +1501,23 @@ export default function Ledger() {
                                     const ref = e.referenceType;
                                     const type = e.type;
                                     const scheme = (() => {
-                                      if (
-                                        type === "CREDIT" &&
-                                        ref === "PROCUREMENT"
-                                      )
-                                        return {
-                                          iconBg: "#e8f5e9",
-                                          iconColor: "#16a34a",
-                                          amt: "#16a34a",
-                                          sign: "+",
-                                        };
-                                      if (
-                                        type === "DEBIT" &&
-                                        ref === "PROCUREMENT_PAYMENT"
-                                      )
-                                        return {
-                                          iconBg: "#fef2f2",
-                                          iconColor: "#dc2626",
-                                          amt: "#dc2626",
-                                          sign: "-",
-                                        };
-                                      if (type === "DEBIT" && ref === "SALE")
-                                        return {
-                                          iconBg: "#e8f5e9",
-                                          iconColor: "#16a34a",
-                                          amt: "#16a34a",
-                                          sign: "+",
-                                        };
-                                      if (type === "DEBIT" && ref === "PAYMENT")
-                                        return {
-                                          iconBg: "#e8f5e9",
-                                          iconColor: "#16a34a",
-                                          amt: "#16a34a",
-                                          sign: "+",
-                                        };
-                                      if (
-                                        type === "CREDIT" &&
-                                        ref === "PAYMENT"
-                                      )
-                                        return {
-                                          iconBg: "#fef2f2",
-                                          iconColor: "#dc2626",
-                                          amt: "#dc2626",
-                                          sign: "-",
-                                        };
-                                      if (ref === "REFUND")
-                                        return {
-                                          iconBg: "#fef2f2",
-                                          iconColor: "#dc2626",
-                                          amt: "#dc2626",
-                                          sign: "-",
-                                        };
-                                      if (ref === "ADJUSTMENT")
-                                        return {
-                                          iconBg: "#fffbeb",
-                                          iconColor: "#d97706",
-                                          amt: "#d97706",
-                                          sign: type === "CREDIT" ? "+" : "-",
-                                        };
-                                      return {
-                                        iconBg: "#f3f4f6",
-                                        iconColor: "#6b7280",
-                                        amt: "#374151",
-                                        sign: type === "CREDIT" ? "+" : "-",
-                                      };
+                                      const s = getEntryStatus(type, ref);
+                                      // map status bar color to icon scheme
+                                      if (type === 'CREDIT' && ref === 'PROCUREMENT')
+                                        return { iconBg: '#e8f5e9', iconColor: '#16a34a', amt: '#16a34a', sign: '+' };
+                                      if (type === 'DEBIT' && ref === 'PROCUREMENT_PAYMENT')
+                                        return { iconBg: '#fef2f2', iconColor: '#dc2626', amt: '#dc2626', sign: '-' };
+                                      if (type === 'DEBIT' && ref === 'SALE')
+                                        return { iconBg: '#e8f5e9', iconColor: '#16a34a', amt: '#16a34a', sign: '+' };
+                                      if (type === 'DEBIT' && ref === 'PAYMENT')
+                                        return { iconBg: '#e8f5e9', iconColor: '#16a34a', amt: '#16a34a', sign: '+' };
+                                      if (type === 'CREDIT' && ref === 'PAYMENT')
+                                        return { iconBg: '#fef2f2', iconColor: '#dc2626', amt: '#dc2626', sign: '-' };
+                                      if (ref === 'REFUND')
+                                        return { iconBg: '#fef2f2', iconColor: '#dc2626', amt: '#dc2626', sign: '-' };
+                                      if (ref === 'ADJUSTMENT')
+                                        return { iconBg: '#fffbeb', iconColor: '#d97706', amt: '#d97706', sign: type === 'CREDIT' ? '+' : '-' };
+                                      return { iconBg: '#f3f4f6', iconColor: '#6b7280', amt: '#374151', sign: type === 'CREDIT' ? '+' : '-' };
                                     })();
                                     const { title } = txnLabel(type, ref);
                                     return (
@@ -1736,7 +1575,7 @@ export default function Ledger() {
                   <div className="flex items-center justify-between mb-3">
                     <div>
                       <p className="text-[10px] font-semibold text-brand-300 uppercase tracking-widest">
-                        Marjeevi FPO
+                        {theme.brand}
                       </p>
                       <p className="text-base font-bold text-white mt-0.5">
                         Farmer Account Ledger
@@ -1872,6 +1711,18 @@ export default function Ledger() {
                                   {row.txns.length} txns
                                 </span>
                               </p>
+                              {/* Feature 8: overdue badge if net != 0 and last activity > 30 days ago */}
+                              {(() => {
+                                const daysSince = row.lastDate ? Math.floor((Date.now() - row.lastDate) / 86400000) : 0;
+                                if (net !== 0 && daysSince > 30) {
+                                  return (
+                                    <span className="mt-1 inline-block text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-500 text-white">
+                                      OVERDUE {daysSince}d
+                                    </span>
+                                  );
+                                }
+                                return null;
+                              })()}
                               {/* Balance shown inline on mobile */}
                               <div className="flex items-center gap-2 mt-1 sm:hidden">
                                 {net === 0 ? (
@@ -1957,40 +1808,12 @@ export default function Ledger() {
                               >
                                 <FileText className="w-3.5 h-3.5" />
                               </button>
-                              {net !== 0 ? (
-                                <button
-                                  onClick={(ev) => {
-                                    ev.stopPropagation();
-                                    setPayModal({
-                                      user: row.user,
-                                      mode: net > 0 ? "fpo" : "farmer",
-                                    });
-                                    setPayAmount("");
-                                    setPayMethod("CASH");
-                                    setPayError("");
-                                    setPayConfirm(false);
-                                    setPayBalance(null);
-                                    setPayBalanceLoading(true);
-                                    dispatch(
-                                      fetchPaymentBalance(row.user._id),
-                                    ).then((r) => {
-                                      setPayBalance(r.payload);
-                                      setPayBalanceLoading(false);
-                                    });
-                                  }}
-                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold text-white transition ${
-                                    isTopay
-                                      ? "bg-rose-500 hover:bg-rose-600"
-                                      : "bg-emerald-500 hover:bg-emerald-600"
-                                  }`}
-                                >
-                                  Pay
-                                </button>
-                              ) : (
-                                <span className="px-2 py-1.5 rounded-lg text-xs font-bold text-slate-300 bg-slate-50 border border-slate-100">
-                                  ✓
-                                </span>
-                              )}
+                              <span className={`px-2 py-1.5 rounded-lg text-xs font-bold ${
+                                net === 0 ? 'text-slate-300 bg-slate-50 border border-slate-100' :
+                                isTopay ? 'text-rose-400 bg-rose-50' : 'text-emerald-500 bg-emerald-50'
+                              }`}>
+                                {net === 0 ? '✓' : isTopay ? 'Owes' : 'Due'}
+                              </span>
                             </div>
                           </div>
                         );
@@ -2196,6 +2019,28 @@ export default function Ledger() {
 
           return (
             <div className="space-y-4">
+              {/* Fix 5: year filter */}
+              {(() => {
+                const years = [...new Set(allEntriesSafe.map(e => new Date(e.createdAt).getFullYear()))].sort((a,b) => b - a);
+                if (years.length <= 1) return null;
+                return (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500 font-medium">Year:</span>
+                    <div className="flex gap-1">
+                      {years.map(y => (
+                        <button key={y} onClick={() => setSelectedYear(y)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                            selectedYear === y ? 'bg-brand-700 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}
+                        >
+                          {y}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Current month banner */}
               <div className="relative flex items-center justify-between px-6 py-5 overflow-hidden bg-gradient-to-r from-brand-800 to-brand-600 rounded-2xl">
                 <div className="absolute top-0 right-0 w-40 h-40 translate-x-12 -translate-y-12 rounded-full bg-white/10" />
@@ -2324,12 +2169,12 @@ export default function Ledger() {
                 const svgH = top5.length * (ROW_H + GAP) + 10;
 
                 // donut data
-                const totalC = entries.reduce(
+                const totalC = allEntriesSafe.reduce(
                   (s, e) =>
                     s + (e.type === "CREDIT" ? Number(e.amount || 0) : 0),
                   0,
                 );
-                const totalD = entries.reduce(
+                const totalD = allEntriesSafe.reduce(
                   (s, e) =>
                     s + (e.type === "DEBIT" ? Number(e.amount || 0) : 0),
                   0,
@@ -3084,62 +2929,7 @@ export default function Ledger() {
                   })()}
                 </div>
 
-                {/* PAYMENT BUTTON */}
-                {(() => {
-                  const procurement = userEntries
-                    .filter(
-                      (e) =>
-                        e.type === "CREDIT" &&
-                        e.referenceType === "PROCUREMENT",
-                    )
-                    .reduce((s, e) => s + Number(e.amount || 0), 0);
-                  const fpoPaid = userEntries
-                    .filter(
-                      (e) =>
-                        e.type === "DEBIT" &&
-                        (e.referenceType === "PAYMENT" ||
-                          e.referenceType === "PROCUREMENT_PAYMENT"),
-                    )
-                    .reduce((s, e) => s + Number(e.amount || 0), 0);
-                  const farmerSale = userEntries
-                    .filter(
-                      (e) => e.type === "DEBIT" && e.referenceType === "SALE",
-                    )
-                    .reduce((s, e) => s + Number(e.amount || 0), 0);
-                  const farmerPaid = userEntries
-                    .filter(
-                      (e) =>
-                        e.type === "CREDIT" && e.referenceType === "PAYMENT",
-                    )
-                    .reduce((s, e) => s + Number(e.amount || 0), 0);
-                  const net = procurement - fpoPaid - (farmerSale - farmerPaid);
-                  const openModal = (mode) => {
-                    setPayModal({ user: selectedUser, mode });
-                    setPayAmount("");
-                    setPayMethod("CASH");
-                    setPayError("");
-                    setPayConfirm(false);
-                    setPayBalance(null);
-                    setPayBalanceLoading(true);
-                    dispatch(fetchPaymentBalance(selectedUser._id)).then(
-                      (r) => {
-                        setPayBalance(r.payload);
-                        setPayBalanceLoading(false);
-                      },
-                    );
-                  };
-                  const isFpoOwes = net > 0;
-                  return (
-                    <div className="flex-shrink-0 px-6 pt-2 pb-1">
-                      <button
-                        onClick={() => openModal(isFpoOwes ? "fpo" : "farmer")}
-                        className="w-full py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90"
-                      >
-                        <Banknote className="w-4 h-4" /> Settle Payment
-                      </button>
-                    </div>
-                  );
-                })()}
+
 
                 {/* TRANSACTION HISTORY TOGGLE */}
                 <div className="flex-shrink-0 px-6 pt-4 pb-3">
@@ -3396,11 +3186,7 @@ export default function Ledger() {
       {/* PAYMENT MODAL */}
       {payModal &&
         (() => {
-          const balanceAmt =
-            payBalance?.balance ??
-            payBalance?.amount ??
-            payBalance?.netBalance ??
-            null;
+          const balanceAmt = payBalance?.balance ?? null;
           const METHODS = [
             { id: "CASH", icon: Banknote, label: "Cash", sub: "Physical cash" },
             {
@@ -3745,7 +3531,7 @@ export default function Ledger() {
                           Back
                         </button>
                         <button
-                          disabled={payLoading}
+                          disabled={payLoading || paymentLoading}
                           onClick={async () => {
                             setPayLoading(true);
                             setPayError("");
@@ -3773,7 +3559,16 @@ export default function Ledger() {
                           }}
                           className="flex-1 py-3 rounded-2xl text-sm font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 disabled:opacity-50 transition"
                         >
-                          {payLoading ? "Processing…" : "Confirm Payment"}
+                          {/* Bug 2 fix: show spinner from Redux paymentLoading state */}
+                          {(payLoading || paymentLoading) ? (
+                            <span className="flex items-center justify-center gap-2">
+                              <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                              </svg>
+                              Processing…
+                            </span>
+                          ) : 'Confirm Payment'}
                         </button>
                       </div>
                     </>

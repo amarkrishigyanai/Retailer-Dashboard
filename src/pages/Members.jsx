@@ -12,6 +12,7 @@ import {
   ShoppingCart,
   Package,
   ChevronRight,
+  Store,
 } from "lucide-react";
 import AddMemberButton from "../components/AddMemberButton";
 import api from "../lib/api";
@@ -73,10 +74,13 @@ function Members() {
   const { members, loading } = useSelector((state) => state.members);
 
   const ITEMS_PER_PAGE = 9;
+  const [activeMainTab, setActiveMainTab] = useState("Farmers");
   const [farmerPage, setFarmerPage] = useState(1);
   const [staffPage, setStaffPage] = useState(1);
+  const [retailerPage, setRetailerPage] = useState(1);
   const [farmerSearch, setFarmerSearch] = useState("");
   const [staffSearch, setStaffSearch] = useState("");
+  const [retailerSearch, setRetailerSearch] = useState("");
   const [farmMember, setFarmMember] = useState(null);
   const [detailMember, setDetailMember] = useState(null);
   const [activeTab, setActiveTab] = useState("Info");
@@ -198,6 +202,7 @@ function Members() {
     total: members.filter((m) => m.role !== "FPO").length,
     farmer: members.filter((m) => m.role === "Farmer").length,
     staff: members.filter((m) => m.role === "Staff").length,
+    retailer: members.filter((m) => m.role === "Retailer").length,
   };
 
   const filteredFarmers = members.filter(
@@ -214,6 +219,13 @@ function Members() {
         .toLowerCase()
         .includes(staffSearch.toLowerCase()),
   );
+  const filteredRetailers = members.filter(
+    (m) =>
+      m.role === "Retailer" &&
+      `${m.firstName} ${m.lastName} ${m.phone}`
+        .toLowerCase()
+        .includes(retailerSearch.toLowerCase()),
+  );
 
   const farmerTotalPages = Math.ceil(filteredFarmers.length / ITEMS_PER_PAGE);
   const farmerStart = (farmerPage - 1) * ITEMS_PER_PAGE;
@@ -227,6 +239,13 @@ function Members() {
   const paginatedStaff = filteredStaff.slice(
     staffStart,
     staffStart + ITEMS_PER_PAGE,
+  );
+
+  const retailerTotalPages = Math.ceil(filteredRetailers.length / ITEMS_PER_PAGE);
+  const retailerStart = (retailerPage - 1) * ITEMS_PER_PAGE;
+  const paginatedRetailers = filteredRetailers.slice(
+    retailerStart,
+    retailerStart + ITEMS_PER_PAGE,
   );
 
   return (
@@ -243,7 +262,7 @@ function Members() {
       </div>
 
       {/* STATS */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {[
           {
             label: "Total Members",
@@ -262,6 +281,12 @@ function Members() {
             value: counts.staff,
             icon: Briefcase,
             color: "bg-yellow-50 text-yellow-600",
+          },
+          {
+            label: "Retailers",
+            value: counts.retailer,
+            icon: Store,
+            color: "bg-purple-50 text-purple-600",
           },
         ].map(({ label, value, icon: Icon, color }) => (
           <div
@@ -283,8 +308,35 @@ function Members() {
         ))}
       </div>
 
+      {/* MAIN TABS */}
+      <div className="flex border-b">
+        {[
+          { key: "Farmers", icon: Tractor, color: "text-brand-600", count: counts.farmer },
+          { key: "Staff", icon: Briefcase, color: "text-yellow-600", count: counts.staff },
+          { key: "Retailers", icon: Store, color: "text-purple-600", count: counts.retailer },
+        ].map(({ key, icon: Icon, color, count }) => (
+          <button
+            key={key}
+            onClick={() => setActiveMainTab(key)}
+            className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition ${
+              activeMainTab === key
+                ? "border-brand-600 text-brand-600"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            <Icon className={`w-4 h-4 ${activeMainTab === key ? "text-brand-600" : color}`} />
+            {key}
+            <span className={`px-1.5 py-0.5 text-xs rounded-full ${
+              activeMainTab === key ? "bg-brand-100 text-brand-700" : "bg-gray-100 text-gray-500"
+            }`}>
+              {loading ? "—" : count}
+            </span>
+          </button>
+        ))}
+      </div>
+
       {/* FARMERS TABLE */}
-      <div className="space-y-3">
+      {activeMainTab === "Farmers" && <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Tractor className="w-5 h-5 text-brand-600" />
@@ -414,10 +466,10 @@ function Members() {
             </div>
           </div>
         )}
-      </div>
+      </div>}
 
       {/* STAFF TABLE */}
-      <div className="space-y-3">
+      {activeMainTab === "Staff" && <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Briefcase className="w-5 h-5 text-yellow-600" />
@@ -533,7 +585,89 @@ function Members() {
             </div>
           </div>
         )}
-      </div>
+      </div>}
+
+      {/* RETAILERS TABLE */}
+      {activeMainTab === "Retailers" && <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Store className="w-5 h-5 text-purple-600" />
+            <h2 className="text-base font-semibold text-gray-800">Retailers</h2>
+            <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 rounded-full">
+              {counts.retailer}
+            </span>
+          </div>
+          <input
+            type="text"
+            placeholder="Search retailers..."
+            value={retailerSearch}
+            onChange={(e) => { setRetailerSearch(e.target.value); setRetailerPage(1); }}
+            className="px-3 py-1.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 w-56"
+          />
+        </div>
+        <div className="overflow-x-auto bg-white shadow-sm rounded-xl">
+          <table className="min-w-full text-sm">
+            <thead className="text-xs text-gray-600 uppercase bg-gray-50">
+              <tr>
+                <th className="px-6 py-4 text-left">Member ID</th>
+                <th className="px-6 py-4 text-left">Name</th>
+                <th className="px-6 py-4 text-left">Phone</th>
+                <th className="px-6 py-4 text-left">Email</th>
+                <th className="px-6 py-4 text-left">Status</th>
+                <th className="px-6 py-4 text-left">KYC Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {loading
+                ? Array(3).fill(0).map((_, i) => <SkeletonRow key={i} />)
+                : paginatedRetailers.map((m) => {
+                    const kycStatus = m.kycStatus || "Pending";
+                    return (
+                      <tr key={m._id} className="cursor-pointer hover:bg-gray-50" onClick={() => openDetail(m)}>
+                        <td className="px-6 py-4 font-medium">FPO-{m._id?.slice(-6).toUpperCase()}</td>
+                        <td className="px-6 py-4 font-medium text-purple-700">{m.firstName} {m.lastName}</td>
+                        <td className="px-6 py-4">+91 {m.phone}</td>
+                        <td className="px-6 py-4 text-gray-500">{m.emailId || "—"}</td>
+                        <td className="px-6 py-4">
+                          <span className="px-3 py-1 text-xs font-semibold text-blue-700 bg-blue-100 rounded-full">
+                            {m.status || "Active"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${KYC_BADGE[kycStatus] || KYC_BADGE.Pending}`}>
+                            {kycStatus}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+              {!loading && !filteredRetailers.length && (
+                <tr>
+                  <td colSpan="6" className="py-10 text-center">
+                    <div className="flex flex-col items-center gap-2 text-gray-400">
+                      <Store className="w-7 h-7" />
+                      <p className="text-sm">No retailers found{retailerSearch && ` for "${retailerSearch}"`}</p>
+                      {retailerSearch && (
+                        <button onClick={() => setRetailerSearch("")} className="text-xs text-brand-600 hover:underline">Clear</button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        {retailerTotalPages > 1 && (
+          <div className="flex items-center justify-between text-sm text-gray-500">
+            <span>Showing {retailerStart + 1}–{Math.min(retailerStart + ITEMS_PER_PAGE, filteredRetailers.length)} of {filteredRetailers.length}</span>
+            <div className="flex gap-2">
+              <button onClick={() => setRetailerPage((p) => p - 1)} disabled={retailerPage === 1} className="px-3 py-1 border rounded disabled:opacity-50">Prev</button>
+              <span>Page {retailerPage} of {retailerTotalPages}</span>
+              <button onClick={() => setRetailerPage((p) => p + 1)} disabled={retailerPage === retailerTotalPages} className="px-3 py-1 border rounded disabled:opacity-50">Next</button>
+            </div>
+          </div>
+        )}
+      </div>}
 
       {farmMember && (
         <FarmModal member={farmMember} onClose={() => setFarmMember(null)} />

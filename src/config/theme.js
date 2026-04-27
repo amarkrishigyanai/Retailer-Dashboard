@@ -8,7 +8,7 @@ const theme = {
   brand: "Reatailer management system",
   shortName: "Reatailer",
   tagline: "Distributor Admin Panel",
-  logo: "🏬",
+  logo: "/Product Catalog images.png",
 
   // API — set VITE_API_BASE in .env
   apiBase:
@@ -18,12 +18,12 @@ const theme = {
   // Default login role
   defaultRole: "Distributor",
 
-  // Primary color (must match CSS variables in index.css)
-  primary: "#16a34a", // brand-600
-  primaryDark: "#15803d", // brand-700
-  primaryLight: "#dcfce7", // brand-100
-  primaryRgb: [22, 163, 74],
-  pwaTheme: "#16a34a",
+  // Primary color — Mint Green
+  primary:      "#3ECF8E",
+  primaryDark:  "#2BB57A",
+  primaryLight: "#E8F8F1",
+  primaryRgb:   [62, 207, 142],
+  pwaTheme:     "#3ECF8E",
 };
 
 export default theme;

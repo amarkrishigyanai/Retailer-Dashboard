@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchProducts } from "../store/thunks/productsThunk";
+import { fetchCropListings } from "../store/thunks/productsThunk";
 import { fetchMembers } from "../store/thunks/membersThunk";
 import {
   Search,
@@ -76,7 +76,7 @@ function Listing() {
   const ITEMS_PER_PAGE = 9;
 
   useEffect(() => {
-    dispatch(fetchProducts());
+    dispatch(fetchCropListings());
     dispatch(fetchMembers());
   }, [dispatch]);
   useEffect(() => {
@@ -130,10 +130,10 @@ function Listing() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-800">
-            Listing Approvals
+            Crop Listings
           </h1>
           <p className="text-sm text-gray-500">
-            Review and approve farmer listings
+            Farmer crop listings
           </p>
         </div>
         <div className="grid grid-cols-3 gap-3">

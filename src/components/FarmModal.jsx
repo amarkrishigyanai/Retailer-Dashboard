@@ -27,13 +27,11 @@ const MAP_STYLES = [
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-// GeoJSON polygon coords are [lng, lat], Leaflet needs [lat, lng]
 const toLatLng = (coords) => coords.map(([lng, lat]) => [lat, lng]);
 
 const getCenter = (coords) => {
@@ -47,9 +45,7 @@ const getCenter = (coords) => {
 
 function FarmModal({ member, onClose }) {
   const dispatch = useDispatch();
-  const { farms, selectedFarm, loading, detailLoading } = useSelector(
-    (s) => s.farm,
-  );
+  const { farms, selectedFarm, loading, detailLoading } = useSelector((s) => s.farm);
   const [mapStyle, setMapStyle] = useState(0);
 
   useEffect(() => {
@@ -61,33 +57,42 @@ function FarmModal({ member, onClose }) {
   const handleBack = () => dispatch(clearSelectedFarm());
 
   const farm = selectedFarm;
-
-  // polygon coords from geojson
   const rawCoords = farm?.geojson?.geometry?.coordinates?.[0];
   const polygonPositions = rawCoords ? toLatLng(rawCoords) : null;
   const mapCenter = rawCoords ? getCenter(rawCoords) : null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: "rgba(58,46,34,0.4)" }}
+    >
+      <div
+        className="w-full max-w-3xl max-h-[90vh] overflow-y-auto"
+        style={{ backgroundColor: "#ffffff", borderRadius: "20px" }}
+      >
         {/* HEADER */}
-        <div className="flex items-center justify-between p-5 border-b ">
+        <div
+          className="flex items-center justify-between p-5"
+          style={{ borderBottom: "1px solid rgba(0,0,0,0.08)" }}
+        >
           <div className="flex items-center gap-2">
             {farm && (
               <button
                 onClick={handleBack}
-                className="p-1 rounded-lg hover:bg-gray-100"
+                className="p-1 rounded-xl transition-all duration-150"
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#fae0d8")}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
               >
-                <ArrowLeft size={18} />
+                <ArrowLeft size={18} style={{ color: "#5a4535" }} />
               </button>
             )}
             <div>
-              <h2 className="text-lg font-semibold">
+              <h2 className="text-lg" style={{ fontWeight: 800, color: "#3b2e22" }}>
                 {farm
                   ? farm.farmName || "Farm Details"
                   : `${member.firstName} ${member.lastName}'s Farms`}
               </h2>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs" style={{ color: "#7a6558" }}>
                 {farm
                   ? `${farm.farmArea} ${farm.unit || "acre"}`
                   : `${farms.length} farm(s) found`}
@@ -96,9 +101,11 @@ function FarmModal({ member, onClose }) {
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg hover:bg-gray-100"
+            className="p-1 rounded-xl transition-all duration-150"
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#fae0d8")}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
           >
-            <X size={20} />
+            <X size={20} style={{ color: "#5a4535" }} />
           </button>
         </div>
 
@@ -108,12 +115,12 @@ function FarmModal({ member, onClose }) {
             <>
               {loading && (
                 <div className="flex justify-center py-10">
-                  <div className="w-8 h-8 border-b-2 border-brand-600 rounded-full animate-spin" />
+                  <div className="w-8 h-8 rounded-full animate-spin" style={{ borderBottom: "2px solid #e8907a" }} />
                 </div>
               )}
 
               {!loading && farms.length === 0 && (
-                <p className="py-10 text-center text-gray-500">
+                <p className="py-10 text-center" style={{ color: "#7a6558" }}>
                   No farms registered for this member.
                 </p>
               )}
@@ -125,18 +132,24 @@ function FarmModal({ member, onClose }) {
                   return (
                     <div
                       key={f._id}
-                      className="p-4 transition border cursor-pointer rounded-xl hover:shadow-md"
+                      className="p-4 transition-all duration-150 cursor-pointer"
+                      style={{ borderRadius: "14px", border: "1px solid rgba(0,0,0,0.08)", backgroundColor: "rgba(250,243,220,0.6)" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#fae0d8")}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "rgba(250,243,220,0.6)")}
                       onClick={() => handleViewDetail(f._id)}
                     >
                       <div className="flex items-start justify-between">
-                        <h3 className="font-semibold text-gray-800">
+                        <h3 className="font-bold" style={{ color: "#3b2e22" }}>
                           {f.farmName || "Unnamed Farm"}
                         </h3>
-                        <span className="text-xs bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full">
+                        <span
+                          className="text-xs px-2 py-0.5 rounded-full"
+                          style={{ backgroundColor: "#fae0d8", color: "#c4674f" }}
+                        >
                           {f.farmArea} {f.unit || "acre"}
                         </span>
                       </div>
-                      <div className="mt-2 space-y-1 text-sm text-gray-500">
+                      <div className="mt-2 space-y-1 text-sm" style={{ color: "#7a6558" }}>
                         <p className="flex items-center gap-1">
                           <MapPin size={13} />
                           {center
@@ -147,11 +160,10 @@ function FarmModal({ member, onClose }) {
                           <Layers size={13} /> Soil: {f.soilType || "N/A"}
                         </p>
                         <p className="flex items-center gap-1">
-                          <Droplets size={13} /> Irrigation:{" "}
-                          {f.irrigationType || "N/A"}
+                          <Droplets size={13} /> Irrigation: {f.irrigationType || "N/A"}
                         </p>
                       </div>
-                      <button className="mt-3 text-xs text-brand-600 hover:underline">
+                      <button className="mt-3 text-xs font-semibold" style={{ color: "#e8907a" }}>
                         View Details & Map →
                       </button>
                     </div>
@@ -166,7 +178,7 @@ function FarmModal({ member, onClose }) {
             <>
               {detailLoading && (
                 <div className="flex justify-center py-10">
-                  <div className="w-8 h-8 border-b-2 border-brand-600 rounded-full animate-spin" />
+                  <div className="w-8 h-8 rounded-full animate-spin" style={{ borderBottom: "2px solid #e8907a" }} />
                 </div>
               )}
 
@@ -176,10 +188,7 @@ function FarmModal({ member, onClose }) {
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                     {[
                       { label: "Farm Name", value: farm.farmName },
-                      {
-                        label: "Area",
-                        value: `${farm.farmArea} ${farm.unit || "acre"}`,
-                      },
+                      { label: "Area", value: `${farm.farmArea} ${farm.unit || "acre"}` },
                       { label: "Soil Type", value: farm.soilType },
                       { label: "Irrigation", value: farm.irrigationType },
                       { label: "Village", value: farm.village },
@@ -189,16 +198,9 @@ function FarmModal({ member, onClose }) {
                     ].map(
                       (item) =>
                         item.value && (
-                          <div
-                            key={item.label}
-                            className="p-3 rounded-lg bg-gray-50"
-                          >
-                            <p className="text-xs text-gray-400">
-                              {item.label}
-                            </p>
-                            <p className="text-sm font-medium text-gray-700 mt-0.5">
-                              {item.value}
-                            </p>
+                          <div key={item.label} className="p-3" style={{ borderRadius: "12px", backgroundColor: "#fae0d8" }}>
+                            <p className="text-xs" style={{ color: "#7a6558" }}>{item.label}</p>
+                            <p className="text-sm font-semibold mt-0.5" style={{ color: "#3b2e22" }}>{item.value}</p>
                           </div>
                         ),
                     )}
@@ -207,14 +209,13 @@ function FarmModal({ member, onClose }) {
                   {/* CROPS */}
                   {farm.crops?.length > 0 && (
                     <div>
-                      <p className="mb-2 text-sm font-medium text-gray-600">
-                        Crops Grown
-                      </p>
+                      <p className="mb-2 text-sm font-semibold" style={{ color: "#5a4535" }}>Crops Grown</p>
                       <div className="flex flex-wrap gap-2">
                         {farm.crops.map((c, i) => (
                           <span
                             key={i}
-                            className="px-3 py-1 text-xs text-brand-700 bg-brand-100 rounded-full"
+                            className="px-3 py-1 text-xs font-semibold rounded-full"
+                            style={{ backgroundColor: "#dff0d8", color: "#3e6030" }}
                           >
                             {c.cropName || c}
                           </span>
@@ -226,20 +227,19 @@ function FarmModal({ member, onClose }) {
                   {/* MAP */}
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-sm font-medium text-gray-600">
-                        Farm Boundary
-                      </p>
+                      <p className="text-sm font-semibold" style={{ color: "#5a4535" }}>Farm Boundary</p>
                       {polygonPositions && (
                         <div className="flex gap-1">
                           {MAP_STYLES.map((s, i) => (
                             <button
                               key={s.label}
                               onClick={() => setMapStyle(i)}
-                              className={`px-3 py-1 text-xs rounded-full border transition ${
+                              className="px-3 py-1 text-xs rounded-full transition-all duration-150"
+                              style={
                                 mapStyle === i
-                                  ? "bg-brand-600 text-white border-brand-600"
-                                  : "text-gray-500 border-gray-300 hover:border-brand-500 hover:text-brand-600"
-                              }`}
+                                  ? { backgroundColor: "#e8907a", color: "#ffffff", border: "1px solid #e8907a" }
+                                  : { color: "#7a6558", border: "1px solid rgba(0,0,0,0.15)", backgroundColor: "transparent" }
+                              }
                             >
                               {s.label}
                             </button>
@@ -248,12 +248,8 @@ function FarmModal({ member, onClose }) {
                       )}
                     </div>
                     {polygonPositions && mapCenter ? (
-                      <div className="overflow-hidden border rounded-xl h-72">
-                        <MapContainer
-                          center={mapCenter}
-                          zoom={16}
-                          style={{ height: "100%", width: "100%" }}
-                        >
+                      <div className="overflow-hidden h-72" style={{ borderRadius: "14px", border: "1px solid rgba(0,0,0,0.08)" }}>
+                        <MapContainer center={mapCenter} zoom={16} style={{ height: "100%", width: "100%" }}>
                           <TileLayer
                             key={mapStyle}
                             url={MAP_STYLES[mapStyle].url}
@@ -261,22 +257,19 @@ function FarmModal({ member, onClose }) {
                           />
                           <Polygon
                             positions={polygonPositions}
-                            pathOptions={{
-                              color: "#4ade80",
-                              fillColor: "#4ade80",
-                              fillOpacity: 0.3,
-                              weight: 2,
-                            }}
+                            pathOptions={{ color: "#8db87a", fillColor: "#8db87a", fillOpacity: 0.3, weight: 2 }}
                           >
                             <Popup>
-                              {farm.farmName || "Farm Boundary"} —{" "}
-                              {farm.farmArea} {farm.unit || "acre"}
+                              {farm.farmName || "Farm Boundary"} — {farm.farmArea} {farm.unit || "acre"}
                             </Popup>
                           </Polygon>
                         </MapContainer>
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center justify-center h-40 text-gray-400 bg-gray-100 rounded-xl">
+                      <div
+                        className="flex flex-col items-center justify-center h-40 rounded-2xl"
+                        style={{ backgroundColor: "#fae0d8", color: "#7a6558" }}
+                      >
                         <MapPin size={28} className="mb-1 opacity-40" />
                         <p className="text-sm">No location data available</p>
                       </div>

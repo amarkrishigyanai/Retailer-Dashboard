@@ -27,7 +27,10 @@ export const fetchPaymentBalance = createAsyncThunk(
   async (farmerId, { rejectWithValue }) => {
     try {
       const res = await api.get(`payment/balance/${farmerId}`);
-      return res.data;
+      // normalize any response shape into a plain number
+      const d = res.data;
+      const raw = d?.balance ?? d?.amount ?? d?.netBalance ?? d?.data?.balance ?? d?.data?.amount ?? null;
+      return { balance: raw !== null ? Number(raw) : null };
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch balance');
     }
@@ -41,7 +44,18 @@ export const recordFarmerPayment = createAsyncThunk(
       const res = await api.post('payment/farmer-payment', { farmerId, amount, paymentMethod });
       return res.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data?.message || 'Payment failed');
+      // If backend returns HTML (route not implemented), show a clear message
+      const contentType = err.response?.headers?.['content-type'] || '';
+      if (contentType.includes('text/html')) {
+        return rejectWithValue('Payment route not available on server. Contact backend developer.');
+      }
+      const msg = err.response?.data?.message
+        || err.response?.data?.error
+        || err.response?.data
+        || err.message
+        || 'Payment failed';
+      console.error('recordFarmerPayment error:', err.response?.status, err.response?.data);
+      return rejectWithValue(typeof msg === 'string' ? msg : JSON.stringify(msg));
     }
   }
 );
@@ -53,7 +67,18 @@ export const recordFpoPayment = createAsyncThunk(
       const res = await api.post('payment/fpo-payment', { farmerId, amount, paymentMethod });
       return res.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data?.message || 'Payment failed');
+      // If backend returns HTML (route not implemented), show a clear message
+      const contentType = err.response?.headers?.['content-type'] || '';
+      if (contentType.includes('text/html')) {
+        return rejectWithValue('Payment route not available on server. Contact backend developer.');
+      }
+      const msg = err.response?.data?.message
+        || err.response?.data?.error
+        || err.response?.data
+        || err.message
+        || 'Payment failed';
+      console.error('recordFpoPayment error:', err.response?.status, err.response?.data);
+      return rejectWithValue(typeof msg === 'string' ? msg : JSON.stringify(msg));
     }
   }
 );
