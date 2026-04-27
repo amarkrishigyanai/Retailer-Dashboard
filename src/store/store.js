@@ -17,6 +17,7 @@ import farmReducer from './slices/farmSlice';
 import ledgerReducer from './slices/ledgerSlice';
 import advertisementReducer from './slices/advertisementSlice';
 import orderReducer from './slices/orderSlice';
+import inquiryReducer from './slices/inquirySlice';
 
 export const store = configureStore({
   reducer: {
@@ -38,5 +39,6 @@ export const store = configureStore({
     ledger: ledgerReducer,
     advertisement: advertisementReducer,
     orders: orderReducer,
+    inquiry: inquiryReducer,
   },
 });
