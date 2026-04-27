@@ -1,0 +1,22 @@
+export const ROLES = {
+  DISTRIBUTOR: 'distributor',
+  RETAILER:    'retailer',
+  STAFF:       'staff',
+  FARMER:      'farmer',
+};
+
+export const ROUTE_ROLES = {
+  '/dashboard':     [ROLES.DISTRIBUTOR, ROLES.RETAILER, ROLES.STAFF],
+  '/listing':       [ROLES.DISTRIBUTOR, ROLES.RETAILER, ROLES.STAFF],
+  '/procurement':   [ROLES.DISTRIBUTOR, ROLES.STAFF],
+  '/inventory':     [ROLES.DISTRIBUTOR, ROLES.RETAILER, ROLES.STAFF],
+  '/buy':           [ROLES.DISTRIBUTOR, ROLES.RETAILER, ROLES.STAFF],
+  '/coupons':       [ROLES.DISTRIBUTOR, ROLES.RETAILER],
+  '/broadcast':     [ROLES.DISTRIBUTOR, ROLES.RETAILER],
+  '/members':       [ROLES.DISTRIBUTOR, ROLES.RETAILER, ROLES.STAFF],
+  '/documents':     [ROLES.DISTRIBUTOR, ROLES.RETAILER, ROLES.STAFF],
+  '/ledger':        [ROLES.DISTRIBUTOR, ROLES.RETAILER],
+  '/advertisement': [ROLES.DISTRIBUTOR, ROLES.RETAILER],
+  '/reports':       [ROLES.DISTRIBUTOR, ROLES.RETAILER, ROLES.STAFF],
+  '/settings':      [ROLES.DISTRIBUTOR, ROLES.RETAILER, ROLES.STAFF, ROLES.FARMER],
+};
