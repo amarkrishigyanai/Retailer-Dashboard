@@ -103,7 +103,7 @@ function Settings() {
               ["village", "Village"],
               ["district", "District"],
               ["state", "State"],
-              ["shopName", "Shop / FPO Name"],
+              ["shopName", "Shop / Retailer Name"],
               ["gstNumber", "GST Number"],
             ].map(([key, label]) => (
               <div key={key}>

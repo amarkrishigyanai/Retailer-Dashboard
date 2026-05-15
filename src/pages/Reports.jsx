@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
-  fetchFarmers,
+  fetchCustomers,
   fetchPrivateFiles,
   fetchReports,
 } from "../store/thunks/reportsThunk";
@@ -63,13 +63,13 @@ const FILE_TYPES = [
 const BAR_COLORS = [theme.primaryDark, theme.primary, '#22c55e', '#4ade80', '#86efac'];
 const CROP_COLORS = [theme.primaryDark, '#0284c7', '#7c3aed', '#d97706', '#dc2626', '#0891b2', '#65a30d'];
 
-const FarmerTooltip = ({ active, payload, totalQty }) => {
+const customerTooltip = ({ active, payload, totalQty }) => {
   if (!active || !payload?.length) return null;
-  const { farmer, quantity, crops } = payload[0].payload;
+  const { customer, quantity, crops } = payload[0].payload;
   const share = totalQty > 0 ? ((quantity / totalQty) * 100).toFixed(1) : 0;
   return (
     <div className="bg-white border border-gray-100 rounded-xl shadow-lg px-4 py-3 text-sm min-w-[180px]">
-      <p className="font-semibold text-gray-800 mb-2">{farmer}</p>
+      <p className="font-semibold text-gray-800 mb-2">{customer}</p>
       <div className="flex justify-between gap-4">
         <span className="text-gray-400">Volume</span>
         <span className="font-bold text-brand-600">{quantity} qtl</span>
@@ -140,22 +140,22 @@ const Reports = () => {
   const [toast, setToast] = useState(null);
   const prefetchedRef = useRef(new Set());
 
-  const { purchases, farmers, files, loading } = useSelector((s) => s.reports);
+  const { purchases, customers, files, loading } = useSelector((s) => s.reports);
 
-  const topFarmersData = useMemo(() => {
+  const topcustomersData = useMemo(() => {
     if (!Array.isArray(purchases)) return [];
     const map = {};
     purchases.forEach((item) => {
-      if (!item?.farmer) return;
+      if (!item?.customer) return;
       const name =
-        `${item.farmer.firstName ?? ""} ${item.farmer.lastName ?? ""}`.trim();
+        `${item.customer.firstName ?? ""} ${item.customer.lastName ?? ""}`.trim();
       if (!map[name]) map[name] = { quantity: 0, crops: new Set() };
       map[name].quantity += item.quantity || 0;
       map[name].crops.add(item.crop);
     });
     return Object.entries(map)
-      .map(([farmer, d]) => ({
-        farmer,
+      .map(([customer, d]) => ({
+        customer,
         quantity: d.quantity,
         crops: [...d.crops].join(", "),
       }))
@@ -177,7 +177,7 @@ const Reports = () => {
 
   useEffect(() => {
     dispatch(fetchReports());
-    dispatch(fetchFarmers());
+    dispatch(fetchCustomers());
   }, [dispatch]);
 
   /* unique crops from purchases for the filter pills */
@@ -189,12 +189,12 @@ const Reports = () => {
     return [...crops].sort();
   }, [purchases]);
 
-  /* farmers who sold the selected crop */
-  const farmerIdsForCrop = useMemo(() => {
+  /* customers who sold the selected crop */
+  const customerIdsForCrop = useMemo(() => {
     if (cropFilter === "all") return null;
     const ids = new Set();
     purchases.forEach((p) => {
-      if (p.crop === cropFilter && p.farmer?._id) ids.add(p.farmer._id);
+      if (p.crop === cropFilter && p.customer?._id) ids.add(p.customer._id);
     });
     return ids;
   }, [purchases, cropFilter]);
@@ -204,21 +204,21 @@ const Reports = () => {
     setTimeout(() => setToast(null), 3000);
   }, []);
 
-  const handleFetchFiles = async (farmerId, type) => {
-    setActiveDoc((prev) => ({ ...prev, [farmerId]: type }));
-    if (!files?.[farmerId]?.[type]) {
-      setFileLoading((prev) => ({ ...prev, [`${farmerId}_${type}`]: true }));
-      setFileLoading((prev) => ({ ...prev, [`${farmerId}_${type}`]: false }));
+  const handleFetchFiles = async (customerId, type) => {
+    setActiveDoc((prev) => ({ ...prev, [customerId]: type }));
+    if (!files?.[customerId]?.[type]) {
+      setFileLoading((prev) => ({ ...prev, [`${customerId}_${type}`]: true }));
+      setFileLoading((prev) => ({ ...prev, [`${customerId}_${type}`]: false }));
     }
   };
 
-  /* pre-fetch all 3 types once per farmer to show counts */
+  /* pre-fetch all 3 types once per customer to show counts */
   const prefetchAllTypes = useCallback(
-    (farmerId) => {
-      if (prefetchedRef.current.has(farmerId)) return;
-      prefetchedRef.current.add(farmerId);
+    (customerId) => {
+      if (prefetchedRef.current.has(customerId)) return;
+      prefetchedRef.current.add(customerId);
       FILE_TYPES.forEach(({ key }) => {
-        dispatch(fetchPrivateFiles({ farmerId, type: key }));
+        dispatch(fetchPrivateFiles({ customerId, type: key }));
       });
     },
     [dispatch],
@@ -254,10 +254,10 @@ const Reports = () => {
     }
   };
 
-  const filteredFarmers = useMemo(() => {
-    let list = farmers;
-    if (farmerIdsForCrop)
-      list = list.filter((f) => farmerIdsForCrop.has(f._id));
+  const filteredcustomers = useMemo(() => {
+    let list = customers;
+    if (customerIdsForCrop)
+      list = list.filter((f) => customerIdsForCrop.has(f._id));
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -267,15 +267,15 @@ const Reports = () => {
       );
     }
     return list;
-  }, [farmers, search, farmerIdsForCrop]);
+  }, [customers, search, customerIdsForCrop]);
 
   /* reset to page 1 whenever filters change */
   useEffect(() => {
     setPage(1);
   }, [search, cropFilter]);
 
-  const totalPages = Math.ceil(filteredFarmers.length / PAGE_SIZE);
-  const pagedFarmers = filteredFarmers.slice(
+  const totalPages = Math.ceil(filteredcustomers.length / PAGE_SIZE);
+  const pagedcustomers = filteredcustomers.slice(
     (page - 1) * PAGE_SIZE,
     page * PAGE_SIZE,
   );
@@ -312,8 +312,8 @@ const Reports = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
           {
-            label: "Total Farmers",
-            value: farmers.length,
+            label: "Total customers",
+            value: customers.length,
             icon: Users,
             color: "bg-brand-50 text-brand-600",
           },
@@ -345,24 +345,24 @@ const Reports = () => {
         ))}
       </div>
 
-      {/* CHARTS ROW — Top Farmers + Leaderboard */}
+      {/* CHARTS ROW — Top customers + Leaderboard */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
         {/* Bar Chart */}
         <div className="lg:col-span-3 bg-white rounded-xl shadow-sm px-6 py-5">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-base font-semibold text-gray-800">
-                Top Farmers by Volume
+                Top customers by Volume
               </h3>
               <p className="text-xs text-gray-400 mt-0.5">
                 Quantity supplied in quintals
               </p>
             </div>
             <span className="flex items-center gap-1.5 text-xs font-medium text-brand-700 bg-brand-50 px-3 py-1.5 rounded-full">
-              <TrendingUp className="w-3.5 h-3.5" /> Top {topFarmersData.length}
+              <TrendingUp className="w-3.5 h-3.5" /> Top {topcustomersData.length}
             </span>
           </div>
-          {topFarmersData.length === 0 ? (
+          {topcustomersData.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-48 text-gray-400">
               <ShoppingCart className="w-10 h-10 mb-2 opacity-30" />
               <p className="text-sm">No data available</p>
@@ -370,7 +370,7 @@ const Reports = () => {
           ) : (
             <ResponsiveContainer width="100%" height={280}>
               <BarChart
-                data={topFarmersData}
+                data={topcustomersData}
                 margin={{ top: 20, right: 16, left: 0, bottom: 44 }}
               >
                 <CartesianGrid
@@ -379,7 +379,7 @@ const Reports = () => {
                   stroke="#f3f4f6"
                 />
                 <XAxis
-                  dataKey="farmer"
+                  dataKey="customer"
                   axisLine={false}
                   tickLine={false}
                   tick={<CustomXTick />}
@@ -387,7 +387,7 @@ const Reports = () => {
                 />
                 <YAxis hide />
                 <Tooltip
-                  content={<FarmerTooltip totalQty={totalQty} />}
+                  content={<customerTooltip totalQty={totalQty} />}
                   cursor={{ fill: "#f0fdf4" }}
                 />
                 <Bar
@@ -396,7 +396,7 @@ const Reports = () => {
                   radius={[6, 6, 0, 0]}
                   background={{ fill: "#f9fafb", radius: [6, 6, 0, 0] }}
                 >
-                  {topFarmersData.map((_, i) => (
+                  {topcustomersData.map((_, i) => (
                     <Cell key={i} fill={BAR_COLORS[i] ?? BAR_COLORS[4]} />
                   ))}
                   <LabelList
@@ -425,23 +425,23 @@ const Reports = () => {
           {/* Column headers */}
           <div className="grid grid-cols-12 text-[10px] font-semibold uppercase tracking-wide text-gray-400 border-b pb-2 mb-1">
             <span className="col-span-1">#</span>
-            <span className="col-span-7">Farmer</span>
+            <span className="col-span-7">customer</span>
             <span className="col-span-4 text-right">Volume</span>
           </div>
 
-          {topFarmersData.length === 0 ? (
+          {topcustomersData.length === 0 ? (
             <div className="flex flex-col items-center justify-center flex-1 text-gray-400">
               <Users className="w-8 h-8 mb-2 opacity-30" />
               <p className="text-sm">No data</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-50">
-              {topFarmersData.map((row, i) => {
+              {topcustomersData.map((row, i) => {
                 const share =
                   totalQty > 0
                     ? ((row.quantity / totalQty) * 100).toFixed(1)
                     : 0;
-                const initials = row.farmer
+                const initials = row.customer
                   .split(" ")
                   .map((p) => p[0])
                   .join("")
@@ -449,7 +449,7 @@ const Reports = () => {
                   .toUpperCase();
                 return (
                   <div
-                    key={row.farmer}
+                    key={row.customer}
                     className="grid grid-cols-12 items-center py-2.5 gap-1"
                   >
                     {/* Rank */}
@@ -469,7 +469,7 @@ const Reports = () => {
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs font-semibold text-gray-800 truncate leading-tight">
-                          {row.farmer}
+                          {row.customer}
                         </p>
                         <p className="text-[10px] text-gray-400 truncate leading-tight">
                           {row.crops}
@@ -511,7 +511,7 @@ const Reports = () => {
               Crop-wise Procurement Breakdown
             </h3>
             <p className="text-xs text-gray-400 mt-0.5">
-              Total volume procured per crop across all farmers
+              Total volume procured per crop across all customers
             </p>
           </div>
           <ResponsiveContainer
@@ -558,21 +558,21 @@ const Reports = () => {
         </div>
       )}
 
-      {/* FARMER DOCUMENTS */}
+      {/* customer DOCUMENTS */}
       <div>
         {/* toolbar */}
         <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
           <h3 className="text-base font-semibold text-gray-800">
-            Farmer Documents
+            customer Documents
             <span className="ml-2 text-sm font-normal text-gray-400">
-              ({filteredFarmers.length})
+              ({filteredcustomers.length})
             </span>
           </h3>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search farmers..."
+              placeholder="Search customers..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 pr-4 py-2 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-500 w-56"
@@ -609,46 +609,46 @@ const Reports = () => {
           </div>
         )}
 
-        {filteredFarmers.length === 0 ? (
+        {filteredcustomers.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 text-gray-400">
             <Users className="w-10 h-10 mb-2 opacity-30" />
-            <p className="text-sm">No farmers found</p>
+            <p className="text-sm">No customers found</p>
           </div>
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {pagedFarmers.map((farmer) => {
-                const fullName = `${farmer.firstName} ${farmer.lastName}`;
-                const selectedType = activeDoc[farmer._id];
-                const selectedFiles = files?.[farmer._id]?.[selectedType] || [];
+              {pagedcustomers.map((customer) => {
+                const fullName = `${customer.firstName} ${customer.lastName}`;
+                const selectedType = activeDoc[customer._id];
+                const selectedFiles = files?.[customer._id]?.[selectedType] || [];
                 const isLoadingFiles =
-                  fileLoading[`${farmer._id}_${selectedType}`];
+                  fileLoading[`${customer._id}_${selectedType}`];
 
                 return (
                   <div
-                    key={farmer._id}
+                    key={customer._id}
                     className="bg-white rounded-xl border shadow-sm p-5 flex flex-col gap-4"
-                    onMouseEnter={() => prefetchAllTypes(farmer._id)}
+                    onMouseEnter={() => prefetchAllTypes(customer._id)}
                   >
-                    {/* Farmer Info */}
+                    {/* customer Info */}
                     <div className="flex items-center gap-3">
                       <Initials name={fullName} />
                       <div className="min-w-0">
                         <p className="font-semibold text-gray-800 truncate">
                           {fullName}
                         </p>
-                        <p className="text-sm text-gray-500">{farmer.phone}</p>
+                        <p className="text-sm text-gray-500">{customer.phone}</p>
                       </div>
                     </div>
 
                     {/* Doc Type Buttons with count badges */}
                     <div className="flex flex-wrap gap-2">
                       {FILE_TYPES.map((t) => {
-                        const count = files?.[farmer._id]?.[t.key]?.length;
+                        const count = files?.[customer._id]?.[t.key]?.length;
                         return (
                           <button
                             key={t.key}
-                            onClick={() => handleFetchFiles(farmer._id, t.key)}
+                            onClick={() => handleFetchFiles(customer._id, t.key)}
                             className={`flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full border transition ${
                               selectedType === t.key
                                 ? t.color + " border-transparent"
@@ -726,8 +726,8 @@ const Reports = () => {
               <div className="flex items-center justify-between mt-6">
                 <p className="text-sm text-gray-500">
                   Showing {(page - 1) * PAGE_SIZE + 1}–
-                  {Math.min(page * PAGE_SIZE, filteredFarmers.length)} of{" "}
-                  {filteredFarmers.length} farmers
+                  {Math.min(page * PAGE_SIZE, filteredcustomers.length)} of{" "}
+                  {filteredcustomers.length} customers
                 </p>
                 <div className="flex items-center gap-2">
                   <button

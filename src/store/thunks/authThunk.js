@@ -17,7 +17,7 @@ export const sendOtp = createAsyncThunk(
 
       const res = await api.post("/otp/send-otp", {
         mobile,
-        role: theme.defaultRole, // or "FPO"
+        role: theme.defaultRole, // or "Retailer"
       });
 
       return res.data;
@@ -47,7 +47,7 @@ export const verifyOtp = createAsyncThunk(
         token: res.data.token, // ✅ correct
         user: {
           ...res.data.data, // ✅ FIXED (was res.data.user ❌)
-          role: res.data.data?.role?.toLowerCase() || "fpo",
+          role: res.data.data?.role?.toLowerCase() || "retailer",
         },
         profile: null, // no profile in response
       };

@@ -50,7 +50,7 @@ const getStatusConfig = (status) =>
 const fmt = (date) => {
   if (!date) return "—";
   const d = new Date(date);
-  return isNaN(d) ? "—" : d.toLocaleDateString("en-IN");
+  return isNaN(d) ? "—" : d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 };
 
 const getDueStatus = (o) => {
@@ -120,12 +120,12 @@ function Buy() {
     const matchStatus =
       statusFilter === "all" || (o.status || "").toUpperCase() === statusFilter;
     const q = search.toLowerCase();
-    const farmerName =
-      `${o.farmer?.firstName ?? ""} ${o.farmer?.lastName ?? ""}`.toLowerCase();
+    const customerName =
+      `${o.customer?.firstName ?? ""} ${o.customer?.lastName ?? ""}`.toLowerCase();
     const itemNames =
       o.items?.map((i) => i.item?.itemName?.toLowerCase()).join(" ") ?? "";
     return (
-      matchStatus && (!q || farmerName.includes(q) || itemNames.includes(q))
+      matchStatus && (!q || customerName.includes(q) || itemNames.includes(q))
     );
   });
 
@@ -151,7 +151,7 @@ function Buy() {
   const exportCSV = () => {
     const headers = [
       "Order ID",
-      "Farmer",
+      "Customer",
       "Items",
       "Total (₹)",
       "Payment",
@@ -160,7 +160,7 @@ function Buy() {
     ];
     const rows = filtered.map((o) => [
       o.orderId,
-      `${o.farmer?.firstName ?? ""} ${o.farmer?.lastName ?? ""}`.trim(),
+      `${o.customer?.firstName ?? ""} ${o.customer?.lastName ?? ""}`.trim(),
       o.items?.map((i) => `${i.item?.itemName} x${i.quantity}`).join(" | ") ??
         "—",
       o.finalAmount ?? "—",
@@ -264,7 +264,7 @@ function Buy() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
           <input
             type="text"
-            placeholder="Search farmer or product..."
+            placeholder="Search customer or product..."
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -310,7 +310,7 @@ function Buy() {
           <thead className="bg-gray-50 text-xs uppercase text-gray-600">
             <tr>
               <th className="px-4 py-4 text-left">Order ID</th>
-              <th className="px-4 py-4 text-left">Farmer</th>
+              <th className="px-4 py-4 text-left">Customer</th>
               <th className="px-4 py-4 text-left">Items</th>
               <th className="px-4 py-4 text-right">Total (₹)</th>
               <th className="px-4 py-4 text-left">Payment</th>
@@ -339,10 +339,10 @@ function Buy() {
 
                   <td className="px-4 py-4">
                     <div className="font-medium">
-                      {o.farmer?.firstName} {o.farmer?.lastName}
+                      {o.customer?.firstName} {o.customer?.lastName}
                     </div>
                     <div className="text-xs text-gray-400">
-                      {o.farmer?.phone}
+                      {o.customer?.phone}
                     </div>
                   </td>
 
@@ -479,148 +479,143 @@ function Buy() {
       )}
 
       {/* VIEW MODAL */}
-      {viewOrder && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">Order Details</h2>
-              <button
-                onClick={() => setViewOrder(null)}
-                className="text-gray-400 hover:text-gray-600 text-xl"
-              >
-                ✕
-              </button>
-            </div>
-            {(() => {
-              const sc = getStatusConfig(viewOrder.status);
-              const Icon = sc.icon;
-              return (
-                <span
-                  className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-medium ${sc.color}`}
-                >
-                  <Icon size={12} /> {sc.label}
-                </span>
-              );
-            })()}
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              {[
-                ["Order ID", viewOrder.orderId],
-                [
-                  "Farmer",
-                  `${viewOrder.farmer?.firstName ?? ""} ${viewOrder.farmer?.lastName ?? ""}`.trim(),
-                ],
-                ["Phone", viewOrder.farmer?.phone ?? "—"],
-                ["Payment", viewOrder.paymentMethod ?? "—"],
-                [
-                  "Credit Days",
-                  viewOrder.paymentMethod === "CREDIT"
-                    ? `${viewOrder.creditDays || 0} days`
-                    : null,
-                ],
-                ["Due Date", viewOrder.dueDate ? fmt(viewOrder.dueDate) : null],
-                [
-                  "Final Amount",
-                  "₹" + (viewOrder.finalAmount || 0).toLocaleString("en-IN"),
-                ],
-                [
-                  "Discount",
-                  viewOrder.discountAmount > 0
-                    ? `₹${viewOrder.discountAmount}`
-                    : "—",
-                ],
-                ["Placed At", fmt(viewOrder.placedAt)],
-                [
-                  "Approved At",
-                  viewOrder.approvedAt ? fmt(viewOrder.approvedAt) : null,
-                ],
-              ]
-                .filter(([, val]) => val !== null)
-                .map(([label, val]) => (
-                  <div key={label}>
-                    <p className="text-xs text-gray-400">{label}</p>
-                    <p className="font-medium">{val || "—"}</p>
-                  </div>
-                ))}
-              {viewOrder.coupon?.code && (
-                <div className="col-span-2">
-                  <p className="text-xs text-gray-400">Coupon Applied</p>
-                  <span className="inline-flex items-center gap-1 text-xs bg-amber-50 text-amber-700 border border-amber-200 px-2 py-1 rounded-full mt-1 font-medium">
-                    <Tag size={11} /> {viewOrder.coupon.code} —{" "}
-                    {viewOrder.coupon.discountType} ₹
-                    {viewOrder.coupon.discountValue}
-                  </span>
+      {viewOrder && (() => {
+        const sc = getStatusConfig(viewOrder.status);
+        const StatusIcon = sc.icon;
+        const customerName = `${viewOrder.customer?.firstName ?? ''} ${viewOrder.customer?.lastName ?? ''}`.trim();
+        const dueAlert = getDueStatus(viewOrder);
+        return (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto">
+
+              {/* Header */}
+              <div className="flex justify-between items-center px-6 py-4 border-b">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-800">Order Details</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">{viewOrder.orderId}</p>
                 </div>
-              )}
-              {(() => {
-                const d = getDueStatus(viewOrder);
-                return d ? (
-                  <div className="col-span-2">
-                    <span
-                      className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium ${d.cls}`}
-                    >
-                      <AlertCircle size={11} /> {d.label}
+                <div className="flex items-center gap-3">
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${sc.color}`}>
+                    <StatusIcon size={11} /> {sc.label}
+                  </span>
+                  <button onClick={() => setViewOrder(null)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+                </div>
+              </div>
+
+              <div className="px-6 py-4 space-y-4">
+                {/* Info grid */}
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                  <div>
+                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Customer</p>
+                    <p className="font-semibold text-gray-800">{customerName || '—'}</p>
+                    {viewOrder.customer?.phone && (
+                      <p className="text-xs text-gray-500 mt-0.5">{viewOrder.customer.phone}</p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Payment</p>
+                    <p className="font-semibold text-gray-800">{viewOrder.paymentMethod || '—'}</p>
+                    {viewOrder.paymentMethod === 'CREDIT' && viewOrder.creditDays > 0 && (
+                      <p className="text-xs text-gray-500 mt-0.5">{viewOrder.creditDays} days credit</p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Final Amount</p>
+                    <p className="font-semibold text-gray-800">₹{(viewOrder.finalAmount || 0).toLocaleString('en-IN')}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Discount</p>
+                    <p className="font-semibold text-gray-800">
+                      {viewOrder.discountAmount > 0 ? `₹${viewOrder.discountAmount.toLocaleString('en-IN')}` : '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Placed At</p>
+                    <p className="font-semibold text-gray-800">{fmt(viewOrder.placedAt)}</p>
+                  </div>
+                  {viewOrder.approvedAt && (
+                    <div>
+                      <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Approved At</p>
+                      <p className="font-semibold text-gray-800">{fmt(viewOrder.approvedAt)}</p>
+                    </div>
+                  )}
+                  {viewOrder.dueDate && (
+                    <div className="col-span-2">
+                      <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Credit Due Date</p>
+                      <p className="font-semibold text-orange-600">{fmt(viewOrder.dueDate)}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Coupon */}
+                {viewOrder.coupon?.code && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Coupon Applied</p>
+                    <span className="inline-flex items-center gap-1.5 text-xs text-amber-700 font-semibold">
+                      <Tag size={11} /> {viewOrder.coupon.code} — {viewOrder.coupon.discountType} ₹{viewOrder.coupon.discountValue}
                     </span>
                   </div>
-                ) : null;
-              })()}
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 mb-2">Items</p>
-              <div className="space-y-2">
-                {viewOrder.items?.map((it, i) => {
-                  const img = it.item?.sourceRef?.productImages?.[0]?.url;
-                  return (
-                    <div
-                      key={i}
-                      className="flex items-center gap-3 border rounded-lg p-2"
-                    >
-                      {img ? (
-                        <img
-                          src={img}
-                          alt=""
-                          className="w-12 h-12 rounded-lg object-cover border flex-shrink-0"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-                          <ImageOff size={16} className="text-gray-300" />
+                )}
+
+                {/* Due alert */}
+                {dueAlert && (
+                  <div className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-medium ${dueAlert.cls}`}>
+                    <AlertCircle size={11} /> {dueAlert.label}
+                  </div>
+                )}
+
+                {/* Items */}
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Items</p>
+                  <div className="border rounded-xl overflow-hidden divide-y">
+                    {viewOrder.items?.map((it, i) => {
+                      const img = it.item?.sourceRef?.productImages?.[0]?.url;
+                      return (
+                        <div key={i} className="flex items-center gap-3 p-3 hover:bg-gray-50">
+                          {img ? (
+                            <img src={img} alt="" className="w-12 h-12 rounded-lg object-cover border flex-shrink-0" />
+                          ) : (
+                            <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                              <ImageOff size={16} className="text-gray-300" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-800 truncate">{it.item?.itemName ?? '—'}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {[it.item?.brand, `${it.quantity} ${it.item?.unit ?? ''}`].filter(Boolean).join(' · ')}
+                            </p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            {it.expectedPrice && (
+                              <p className="text-xs text-gray-400">MRP ₹{it.expectedPrice}</p>
+                            )}
+                            {it.finalPrice != null && (
+                              <p className="text-sm font-semibold text-brand-700">₹{it.finalPrice}</p>
+                            )}
+                          </div>
                         </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {it.item?.itemName ?? "—"}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          {it.item?.brand ?? ""} · {it.quantity}{" "}
-                          {it.item?.unit ?? ""}
-                        </p>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-xs text-gray-400">MRP</p>
-                        <p className="text-sm font-semibold">
-                          ₹{it.expectedPrice ?? "—"}
-                        </p>
-                        {it.finalPrice && (
-                          <p className="text-xs text-brand-600">
-                            Selling ₹{it.finalPrice}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Grand total */}
+                <div className="flex justify-between items-center pt-3 border-t">
+                  <p className="text-sm text-gray-500">Grand Total</p>
+                  <p className="text-xl font-bold text-brand-700">₹{(viewOrder.finalAmount || 0).toLocaleString('en-IN')}</p>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 border-t flex justify-end">
+                <button onClick={() => setViewOrder(null)} className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+                  Close
+                </button>
               </div>
             </div>
-            <div className="flex justify-end pt-2">
-              <button
-                onClick={() => setViewOrder(null)}
-                className="px-4 py-2 text-sm border rounded-lg"
-              >
-                Close
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* CONFIRM STATUS CHANGE */}
       {confirmStatus && (

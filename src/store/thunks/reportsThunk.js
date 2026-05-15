@@ -1,13 +1,13 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../lib/api';
 
-/* ================= PURCHASE REPORTS ================= */
+/* ================= MONTHLY INVENTORY REPORT ================= */
 export const fetchReports = createAsyncThunk(
-  'reports/fetchPurchases',
-  async (_, { rejectWithValue }) => {
+  'reports/fetchInventoryMonthly',
+  async (year = new Date().getFullYear(), { rejectWithValue }) => {
     try {
-      const res = await api.get('purchase/getPurchases');
-      return res.data.data;
+      const res = await api.get(`/reports/inventory/monthly?year=${year}`);
+      return res.data?.data ?? res.data;
     } catch (err) {
       return rejectWithValue(
         err.response?.data?.message || 'Failed to load reports'
@@ -16,15 +16,15 @@ export const fetchReports = createAsyncThunk(
   }
 );
 
-/* ================= FARMERS ================= */
-export const fetchFarmers = createAsyncThunk(
-  'reports/fetchFarmers',
+/* ================= CUSTOMERS ================= */
+export const fetchCustomers = createAsyncThunk(
+  'reports/fetchCustomers',
   async (_, { rejectWithValue }) => {
     try {
-      const res = await api.get('/user/getAllFarmers');
+      const res = await api.get('/user/getAllUsers');
       return res.data.data;
     } catch (err) {
-      return rejectWithValue('Failed to fetch farmers');
+      return rejectWithValue('Failed to fetch customers');
     }
   }
 );
@@ -32,14 +32,14 @@ export const fetchFarmers = createAsyncThunk(
 /* ================= PRIVATE FILES ================= */
 export const fetchPrivateFiles = createAsyncThunk(
   'reports/fetchPrivateFiles',
-  async ({ farmerId, type }, { rejectWithValue }) => {
+  async ({ customerId, type }, { rejectWithValue }) => {
     try {
       const res = await api.get(
-        `/admin/files/private?type=${type}&userId=${farmerId}`
+        `/admin/files/private?type=${type}&userId=${customerId}`
       );
 
       return {
-        farmerId,
+        customerId,
         type,
         files: res.data.files || [],
       };

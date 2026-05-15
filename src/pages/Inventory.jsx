@@ -19,6 +19,9 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
+  Cell,
+  CartesianGrid,
+  LabelList,
 } from "recharts";
 import {
   fetchProducts,
@@ -30,9 +33,14 @@ import {
   toggleProductStatus,
 } from "../store/thunks/inventoryThunk";
 import ConfirmDialog from "../components/ConfirmDialog";
-import { SkeletonHeader, SkeletonStatCards, SkeletonTable } from "../components/Skeleton";
+import {
+  SkeletonHeader,
+  SkeletonStatCards,
+  SkeletonTable,
+} from "../components/Skeleton";
+import ProductCard from "../components/ProductCard";
 
-const ITEMS_PER_PAGE = 8;
+const ITEMS_PER_PAGE = 12;
 
 function StatusBadge({ isActive }) {
   return isActive ? (
@@ -193,14 +201,17 @@ function ProductModal({ initial, onClose, onSave, saving }) {
     const missing = [];
     if (!form.productName.trim()) missing.push("Product Name");
     if (!isEdit && !form.productCategory) missing.push("Category");
-    if (!form.productTechnicalDetails.trim()) missing.push("Technical Details");
-    if (!form.howToUse.trim()) missing.push("How To Use");
-    if (!form.productBenefits.trim()) missing.push("Product Benefits");
+    if (!isEdit && !form.productTechnicalDetails.trim())
+      missing.push("Technical Details");
+    if (!isEdit && !form.howToUse.trim()) missing.push("How To Use");
+    if (!isEdit && !form.productBenefits.trim())
+      missing.push("Product Benefits");
     if (form.mrp === "" || form.mrp === null) missing.push("MRP");
     if (form.quantity === "" || form.quantity === null)
       missing.push("Quantity");
     if (!form.unit.trim()) missing.push("Unit");
     if (!isEdit && !form.purchaseDate) missing.push("Purchase Date");
+    if (!isEdit && !imageFile) missing.push("Product Image");
     if (missing.length) {
       toast.error(`Required: ${missing.join(", ")}`);
       return;
@@ -289,17 +300,19 @@ function ProductModal({ initial, onClose, onSave, saving }) {
                   </FIELD>
                 </div>
                 <div className="col-span-2">
-                  <FIELD label="Technical Details" required>
+                  <FIELD label="Technical Details" required={!isEdit}>
                     <textarea
                       value={form.productTechnicalDetails}
-                      onChange={(e) => setF("productTechnicalDetails", e.target.value)}
+                      onChange={(e) =>
+                        setF("productTechnicalDetails", e.target.value)
+                      }
                       className={inputCls + " resize-none"}
                       rows={2}
                       placeholder="e.g. NPK composition, grade"
                     />
                   </FIELD>
                 </div>
-                <FIELD label="How To Use" required>
+                <FIELD label="How To Use" required={!isEdit}>
                   <textarea
                     value={form.howToUse}
                     onChange={(e) => setF("howToUse", e.target.value)}
@@ -308,7 +321,7 @@ function ProductModal({ initial, onClose, onSave, saving }) {
                     placeholder="Usage instructions"
                   />
                 </FIELD>
-                <FIELD label="Product Benefits" required>
+                <FIELD label="Product Benefits" required={!isEdit}>
                   <textarea
                     value={form.productBenefits}
                     onChange={(e) => setF("productBenefits", e.target.value)}
@@ -429,6 +442,7 @@ function ProductModal({ initial, onClose, onSave, saving }) {
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
                 Product Image
+                {!isEdit && <span className="text-red-500 ml-0.5">*</span>}
               </p>
               <div
                 className={`relative border-2 border-dashed rounded-xl transition cursor-pointer ${
@@ -537,6 +551,153 @@ function ProductModal({ initial, onClose, onSave, saving }) {
   );
 }
 
+function ProductDetailModal({ row, onClose, onEdit }) {
+  const stock = row._stock;
+  const qty = stock ? (stock.availableQuantity ?? 0) : null;
+  const purchasePrice = stock?.item?.purchasePrice ?? 0;
+  const stockValue = qty != null ? qty * purchasePrice : 0;
+  const p0 = row.products?.[0];
+  const catLabel = (row.productCategory || row.category || "").replace(
+    /_/g,
+    " ",
+  );
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b">
+          <div className="flex items-center gap-3">
+            <ProductImage
+              url={row.productImages?.[0]?.url}
+              name={row.productName}
+            />
+            <div>
+              <h2 className="font-semibold text-gray-900">
+                {row.productName ?? "—"}
+              </h2>
+              {row.brand && (
+                <p className="text-xs text-gray-400">{row.brand}</p>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onEdit}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 text-white rounded-lg text-xs font-medium hover:bg-brand-700 transition"
+            >
+              <Pencil size={12} /> Edit
+            </button>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        <div className="overflow-y-auto flex-1 p-6 space-y-5">
+          {/* Badges */}
+          <div className="flex flex-wrap gap-2">
+            {catLabel && (
+              <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-50 text-indigo-600 capitalize">
+                {catLabel}
+              </span>
+            )}
+            <StatusBadge isActive={row.isActive} />
+            <StockBadge qty={qty ?? 0} inStockSystem={!!stock} />
+          </div>
+
+          {/* Info Grid */}
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              { label: "MRP", value: p0?.mrp != null ? `₹${p0.mrp}` : "—" },
+              {
+                label: "Buy Price",
+                value: purchasePrice
+                  ? `₹${purchasePrice.toLocaleString("en-IN")}`
+                  : "—",
+              },
+              {
+                label: "Live Qty",
+                value:
+                  qty != null
+                    ? `${qty} ${stock?.item?.unit ?? p0?.unit ?? ""}`
+                    : "—",
+              },
+              {
+                label: "Stock Value",
+                value: stockValue
+                  ? `₹${stockValue.toLocaleString("en-IN")}`
+                  : "—",
+              },
+              { label: "Unit", value: p0?.unit ?? "—" },
+              { label: "Parameter", value: p0?.parameter ?? "—" },
+              {
+                label: "Purchase Date",
+                value: p0?.purchaseDate ? p0.purchaseDate.split("T")[0] : "—",
+              },
+              {
+                label: "Expiry Date",
+                value: p0?.expiryDate ? (
+                  <ExpiryCell date={p0.expiryDate} />
+                ) : (
+                  "—"
+                ),
+              },
+            ].map(({ label, value }) => (
+              <div key={label} className="bg-gray-50 rounded-xl p-3">
+                <p className="text-xs text-gray-400 mb-1">{label}</p>
+                <p className="text-sm font-semibold text-gray-800">{value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Text Details */}
+          {[
+            { label: "Description", value: row.description },
+            { label: "Technical Details", value: row.productTechnicalDetails },
+            { label: "How To Use", value: row.howToUse },
+            { label: "Product Benefits", value: row.productBenefits },
+          ]
+            .filter((f) => f.value)
+            .map(({ label, value }) => (
+              <div key={label}>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                  {label}
+                </p>
+                <p className="text-sm text-gray-700 leading-relaxed">{value}</p>
+              </div>
+            ))}
+
+          {/* Target Crops */}
+          {row.targetCrops?.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
+                Target Crops
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {row.targetCrops.map((c) => (
+                  <span
+                    key={c}
+                    className="px-2.5 py-1 bg-green-50 text-green-700 rounded-lg text-xs font-medium"
+                  >
+                    {c}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function exportCSV(data) {
   const headers = ["Product Name", "Brand", "Description", "Status"];
   const rows = data.map((r) => [
@@ -567,6 +728,7 @@ function Inventory() {
   const [showModal, setShowModal] = useState(false);
   const [editRow, setEditRow] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [viewRow, setViewRow] = useState(null);
 
   useEffect(() => {
     dispatch(fetchProducts());
@@ -578,7 +740,13 @@ function Inventory() {
     const activeProducts = products.filter((p) => p.isActive).length;
     const inactiveProducts = totalProducts - activeProducts;
     const getStockEntry = (p) =>
-      stockSummary.find((s) => s.item?.sourceRef === p._id);
+      stockSummary.find((s) => {
+        const ref = s.item?.sourceRef;
+        if (!ref) return false;
+        return (
+          (typeof ref === "object" ? ref.toString() : ref) === p._id.toString()
+        );
+      });
     const outOfStock = products.filter((p) => {
       const s = getStockEntry(p);
       return s && (s.availableQuantity ?? 0) === 0;
@@ -614,10 +782,17 @@ function Inventory() {
 
   const monthlyStockData = useMemo(() => {
     return stockSummary
-      .map((item) => ({
-        name: item.item?.itemName ?? "—",
-        available: item.availableQuantity ?? 0,
-      }))
+      .map((item) => {
+        const baseName = item.item?.itemName ?? "—";
+        const param = item.item?.parameter ?? item.item?.unit ?? "";
+        const qty = item.item?.quantity ?? "";
+        // build a unique label: "Urea · 50 bag" or "Urea · 25kg"
+        const suffix = param ? `${qty ? qty + " " : ""}${param}` : "";
+        return {
+          name: suffix ? `${baseName} · ${suffix}` : baseName,
+          available: item.availableQuantity ?? 0,
+        };
+      })
       .slice(0, 10);
   }, [stockSummary]);
 
@@ -636,7 +811,14 @@ function Inventory() {
   const mergedRows = useMemo(() => {
     return products.map((p) => {
       const stock =
-        stockSummary.find((s) => s.item?.sourceRef === p._id) ?? null;
+        stockSummary.find((s) => {
+          const ref = s.item?.sourceRef;
+          if (!ref) return false;
+          return (
+            (typeof ref === "object" ? ref.toString() : ref) ===
+            p._id.toString()
+          );
+        }) ?? null;
       return { ...p, _stock: stock };
     });
   }, [products, stockSummary]);
@@ -689,29 +871,66 @@ function Inventory() {
     setSaving(true);
 
     if (editRow) {
-      const product = editRow.products?.[0];
       const data = {
         productName: form.productName,
         productCategory: form.productCategory || editRow.productCategory || "",
-        description: form.description || null,
-        brand: form.brand || null,
-        mrp: Number(form.mrp),
-        quantity: Number(form.quantity),
-        unit: form.unit,
-        purchaseDate: form.purchaseDate,
-        expiryDate: form.expiryDate || null,
-        ...(form.parameter && { parameter: form.parameter }),
+        ...(form.description ? { description: form.description } : {}),
+        ...(form.brand ? { brand: form.brand } : {}),
+        ...(form.productTechnicalDetails
+          ? { productTechnicalDetails: form.productTechnicalDetails }
+          : {}),
+        ...(form.howToUse ? { howToUse: form.howToUse } : {}),
+        ...(form.productBenefits
+          ? { productBenefits: form.productBenefits }
+          : {}),
+        products: [
+          {
+            ...(editRow.products?.[0]?._id
+              ? { _id: editRow.products[0]._id }
+              : {}),
+            mrp: Number(form.mrp),
+            quantity: Number(form.quantity),
+            unit: form.unit,
+            ...(form.purchaseDate ? { purchaseDate: form.purchaseDate } : {}),
+            ...(form.expiryDate ? { expiryDate: form.expiryDate } : {}),
+            ...(form.parameter ? { parameter: form.parameter } : {}),
+          },
+        ],
       };
+
+      const doRefresh = () => {
+        setTimeout(() => {
+          dispatch(fetchProducts());
+          dispatch(fetchStockSummary());
+        }, 1000);
+      };
+
       dispatch(updateProduct({ id: editRow._id, data }))
         .unwrap()
         .then(() => {
-          toast.success("Product updated");
-          setShowModal(false);
-          setEditRow(null);
-          setTimeout(() => {
-            dispatch(fetchProducts());
-            dispatch(fetchStockSummary());
-          }, 1500);
+          if (imageFile) {
+            const imgFd = new FormData();
+            imgFd.append("productImages", imageFile);
+            dispatch(updateProduct({ id: editRow._id, data: imgFd }))
+              .unwrap()
+              .then(() => {
+                toast.success("Product & image updated");
+                setShowModal(false);
+                setEditRow(null);
+                doRefresh();
+              })
+              .catch(() => {
+                toast.success("Product updated (image upload failed)");
+                setShowModal(false);
+                setEditRow(null);
+                doRefresh();
+              });
+          } else {
+            toast.success("Product updated");
+            setShowModal(false);
+            setEditRow(null);
+            doRefresh();
+          }
         })
         .catch((err) =>
           toast.error(
@@ -725,7 +944,10 @@ function Inventory() {
     }
 
     const crops = form.targetCrops
-      ? form.targetCrops.split(",").map((c) => c.trim()).filter(Boolean)
+      ? form.targetCrops
+          .split(",")
+          .map((c) => c.trim())
+          .filter(Boolean)
       : ["All"];
 
     const payload = {
@@ -737,31 +959,45 @@ function Inventory() {
       howToUse: form.howToUse,
       productBenefits: form.productBenefits,
       targetCrops: crops,
-      products: [{
-        mrp: Number(form.mrp),
-        quantity: Number(form.quantity),
-        unit: form.unit,
-        purchaseDate: form.purchaseDate,
-        ...(form.parameter && { parameter: form.parameter }),
-        ...(form.expiryDate && { expiryDate: form.expiryDate }),
-      }],
+      products: [
+        {
+          mrp: Number(form.mrp),
+          quantity: Number(form.quantity),
+          unit: form.unit,
+          purchaseDate: form.purchaseDate,
+          ...(form.parameter && { parameter: form.parameter }),
+          ...(form.expiryDate && { expiryDate: form.expiryDate }),
+        },
+      ],
     };
 
-    console.log("Sending payload:", JSON.stringify(payload, null, 2));
+    // Send as FormData if image exists, otherwise JSON
+    let data;
+    if (imageFile) {
+      data = new FormData();
+      data.append("productImages", imageFile);
+      // Append all other fields as JSON string or individual fields
+      Object.keys(payload).forEach((key) => {
+        if (key === "products" || key === "targetCrops") {
+          data.append(key, JSON.stringify(payload[key]));
+        } else {
+          data.append(key, payload[key]);
+        }
+      });
+    } else {
+      data = payload;
+    }
 
-    dispatch(addProduct(payload))
+    console.log(
+      "Sending payload:",
+      imageFile ? "FormData with image" : JSON.stringify(payload, null, 2),
+    );
+
+    dispatch(addProduct(data))
       .unwrap()
-      .then((newProduct) => {
+      .then(() => {
         toast.success("Product added");
         setShowModal(false);
-        if (imageFile) {
-          const newId = newProduct?._id ?? newProduct?.product?._id;
-          if (newId) {
-            const imgFd = new FormData();
-            imgFd.append("productImages", imageFile);
-            dispatch(updateProduct({ id: newId, data: imgFd }));
-          }
-        }
         setTimeout(() => dispatch(fetchProducts()), 1500);
       })
       .catch((err) => toast.error(err || "Failed to add product"))
@@ -919,52 +1155,137 @@ function Inventory() {
       </div>
 
       {/* STOCK LEVELS CHART */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-        <div className="flex justify-between items-center mb-4">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
           <div>
-            <h2 className="font-semibold text-gray-800">Stock Levels</h2>
+            <h2 className="font-semibold text-gray-800 text-base">
+              Stock Levels
+            </h2>
             <p className="text-xs text-gray-400 mt-0.5">
               Live available quantity per item
             </p>
           </div>
-          <span className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-lg">
-            Top 10 items
-          </span>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 text-xs text-gray-500">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-sm bg-brand-500 inline-block" />
+                In Stock
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-sm bg-orange-400 inline-block" />
+                Low Stock
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-sm bg-red-400 inline-block" />
+                Out of Stock
+              </span>
+            </div>
+            <span className="text-xs text-gray-400 bg-gray-50 border border-gray-100 px-2.5 py-1 rounded-lg">
+              Top {monthlyStockData.length} items
+            </span>
+          </div>
         </div>
-        <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={monthlyStockData} barSize={24} barCategoryGap="30%">
-            <XAxis
-              dataKey="name"
-              tick={{ fontSize: 10, fill: "#9ca3af" }}
-              interval={0}
-              angle={-20}
-              textAnchor="end"
-              height={48}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
-              allowDecimals={false}
-              tick={{ fontSize: 10, fill: "#9ca3af" }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <Tooltip
-              contentStyle={{
-                borderRadius: 8,
-                border: "1px solid #e5e7eb",
-                fontSize: 12,
-              }}
-              formatter={(v) => [v, "Available Qty"]}
-            />
-            <Bar
-              dataKey="available"
-              fill="#22c55e"
-              radius={[6, 6, 0, 0]}
-              minPointSize={4}
-            />
-          </BarChart>
-        </ResponsiveContainer>
+
+        {monthlyStockData.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-48 gap-2 text-gray-300">
+            <Package size={32} />
+            <p className="text-sm">No stock data available</p>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart
+              data={monthlyStockData}
+              barSize={32}
+              barCategoryGap="35%"
+              margin={{ top: 16, right: 8, left: 0, bottom: 52 }}
+            >
+              <defs>
+                <linearGradient id="gradGreen" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#3ECF8E" stopOpacity={1} />
+                  <stop offset="100%" stopColor="#2BB57A" stopOpacity={0.8} />
+                </linearGradient>
+                <linearGradient id="gradOrange" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#fb923c" stopOpacity={1} />
+                  <stop offset="100%" stopColor="#ea580c" stopOpacity={0.8} />
+                </linearGradient>
+                <linearGradient id="gradRed" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#f87171" stopOpacity={1} />
+                  <stop offset="100%" stopColor="#dc2626" stopOpacity={0.8} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                vertical={false}
+                stroke="#f3f4f6"
+                strokeDasharray="4 4"
+              />
+              <XAxis
+                dataKey="name"
+                tick={{ fontSize: 11, fill: "#6b7280", fontWeight: 500 }}
+                interval={0}
+                angle={-30}
+                textAnchor="end"
+                height={56}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                allowDecimals={false}
+                tick={{ fontSize: 11, fill: "#9ca3af" }}
+                axisLine={false}
+                tickLine={false}
+                width={36}
+              />
+              <Tooltip
+                cursor={{ fill: "#f9fafb", radius: 6 }}
+                contentStyle={{
+                  borderRadius: 10,
+                  border: "1px solid #e5e7eb",
+                  fontSize: 12,
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                  padding: "8px 12px",
+                }}
+                formatter={(v, _name, props) => {
+                  const status =
+                    v === 0
+                      ? "Out of Stock"
+                      : v <= 5
+                        ? "Low Stock"
+                        : "In Stock";
+                  return [
+                    <span style={{ fontWeight: 700 }}>{v} units</span>,
+                    <span style={{ color: "#6b7280" }}>{status}</span>,
+                  ];
+                }}
+                labelStyle={{
+                  fontWeight: 600,
+                  color: "#111827",
+                  marginBottom: 4,
+                }}
+              />
+              <Bar dataKey="available" radius={[6, 6, 0, 0]} minPointSize={4}>
+                <LabelList
+                  dataKey="available"
+                  position="top"
+                  style={{ fontSize: 10, fontWeight: 600, fill: "#6b7280" }}
+                  formatter={(v) => (v > 0 ? v : "")}
+                />
+                {monthlyStockData.map((entry, index) => (
+                  <Cell
+                    key={index}
+                    fill={
+                      entry.available === 0
+                        ? "url(#gradRed)"
+                        : entry.available <= 5
+                          ? "url(#gradOrange)"
+                          : "url(#gradGreen)"
+                    }
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        )}
       </div>
 
       {/* TABLE */}
@@ -1074,251 +1395,63 @@ function Inventory() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50/80 border-b border-gray-100">
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider w-8">
-                  #
-                </th>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  Product
-                </th>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  Category
-                </th>
-                <th className="px-5 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  MRP
-                </th>
-                <th className="px-5 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  Buy Price
-                </th>
-                <th className="px-5 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  Live Qty
-                </th>
-                <th className="px-5 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  Stock Value
-                </th>
-                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  Expiry
-                </th>
-                <th className="px-5 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  Stock
-                </th>
-                <th className="px-5 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-5 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
+        {/* Grid View for Products */}
+        {paginatedData.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 px-6">
+            <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+              <Package size={32} className="text-gray-300" />
+            </div>
+            <p className="text-base font-medium text-gray-900 mb-1">
+              No products found
+            </p>
+            <p className="text-sm text-gray-400">
+              Try adjusting your search or filter
+            </p>
+          </div>
+        ) : (
+          <div className="p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               {paginatedData.map((row, i) => {
                 const stock = row._stock;
-                const inStockSystem = !!stock;
-                const qty = stock ? (stock.availableQuantity ?? 0) : null;
-                const purchasePrice = stock?.item?.purchasePrice ?? 0;
-                const stockValue = qty != null ? qty * purchasePrice : 0;
-                const rawCat = row.productCategory || row.category || "";
-                const catLabel = rawCat ? rawCat.replace(/_/g, " ") : null;
-                const isOOS = qty === 0;
-                const isLow = qty != null && qty > 0 && qty <= 5;
-                const rowBg = isOOS
-                  ? "bg-red-50/30"
-                  : isLow
-                    ? "bg-orange-50/30"
-                    : "";
                 return (
-                  <tr
+                  <ProductCard
                     key={row._id || i}
-                    className={`border-b border-gray-50 hover:bg-gray-50/60 transition-colors ${rowBg}`}
-                  >
-                    <td className="px-5 py-4 text-gray-300 text-xs font-medium">
-                      {(currentPage - 1) * ITEMS_PER_PAGE + i + 1}
-                    </td>
-
-                    {/* Product */}
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <ProductImage
-                          url={row.productImages?.[0]?.url}
-                          name={row.productName}
-                        />
-                        <div className="min-w-0">
-                          <p className="font-semibold text-gray-800 max-w-[200px] leading-snug">
-                            {row.productName ?? "—"}
-                          </p>
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            {row.brand ?? "No brand"}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Category */}
-                    <td className="px-5 py-4">
-                      {catLabel ? (
-                        <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-50 text-indigo-600 capitalize whitespace-nowrap">
-                          {catLabel}
-                        </span>
-                      ) : (
-                        <span className="text-gray-300 text-xs">—</span>
-                      )}
-                    </td>
-
-                    {/* MRP */}
-                    <td className="px-5 py-4 text-right">
-                      <span className="font-semibold text-gray-800">
-                        ₹{row.products?.[0]?.mrp ?? "—"}
-                      </span>
-                    </td>
-
-                    {/* Buy Price */}
-                    <td className="px-5 py-4 text-right">
-                      {purchasePrice ? (
-                        <span className="text-gray-600">
-                          ₹{purchasePrice.toLocaleString("en-IN")}
-                        </span>
-                      ) : (
-                        <span className="text-gray-300 text-xs">—</span>
-                      )}
-                    </td>
-
-                    {/* Live Qty */}
-                    <td className="px-5 py-4 text-right">
-                      {qty != null ? (
-                        <div className="flex items-center justify-end gap-1">
-                          <span
-                            className={`text-base font-bold ${
-                              isOOS
-                                ? "text-red-500"
-                                : isLow
-                                  ? "text-orange-500"
-                                  : "text-brand-600"
-                            }`}
-                          >
-                            {qty}
-                          </span>
-                          <span className="text-xs text-gray-400">
-                            {stock?.item?.unit ?? row.products?.[0]?.unit ?? ""}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-gray-300">—</span>
-                      )}
-                    </td>
-
-                    {/* Stock Value */}
-                    <td className="px-5 py-4 text-right">
-                      {stockValue ? (
-                        <span className="font-semibold text-gray-700">
-                          ₹{stockValue.toLocaleString("en-IN")}
-                        </span>
-                      ) : (
-                        <span className="text-gray-300 text-xs">—</span>
-                      )}
-                    </td>
-
-                    {/* Expiry */}
-                    <td className="px-5 py-4 text-xs">
-                      <ExpiryCell
-                        date={
-                          stock?.item?.expiryDate ??
-                          row.products?.[0]?.expiryDate
-                        }
-                      />
-                    </td>
-
-                    {/* Stock Badge */}
-                    <td className="px-5 py-4 text-center">
-                      <StockBadge
-                        qty={qty ?? 0}
-                        inStockSystem={inStockSystem}
-                      />
-                    </td>
-
-                    {/* Status Toggle */}
-                    <td className="px-5 py-4 text-center">
-                      <button
-                        onClick={() =>
-                          dispatch(
-                            toggleProductStatus({
-                              id: row._id,
-                              isActive: !row.isActive,
-                            }),
-                          )
-                            .unwrap()
-                            .then(() =>
-                              toast.success(
-                                `Marked ${!row.isActive ? "Active" : "Inactive"}`,
-                              ),
-                            )
-                            .catch(() => toast.error("Failed to update status"))
-                        }
-                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-all ${
-                          row.isActive
-                            ? "bg-brand-100 text-brand-700 hover:bg-red-50 hover:text-red-600"
-                            : "bg-gray-100 text-gray-500 hover:bg-brand-50 hover:text-brand-600"
-                        }`}
-                      >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${row.isActive ? "bg-brand-500" : "bg-gray-400"}`}
-                        />
-                        {row.isActive ? "Active" : "Inactive"}
-                      </button>
-                    </td>
-
-                    {/* Actions */}
-                    <td className="px-5 py-4">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <button
-                          onClick={() => {
-                            setEditRow(row);
-                            setShowModal(true);
-                          }}
-                          className="p-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 transition"
-                          title="Edit"
-                        >
-                          <Pencil size={13} />
-                        </button>
-                        <button
-                          onClick={() => {
-                            setConfirmType("product");
-                            setConfirmId(row._id);
-                          }}
-                          className="p-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 transition"
-                          title="Delete"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                    product={row}
+                    stock={stock}
+                    onView={() => setViewRow(row)}
+                    onEdit={() => {
+                      setEditRow(row);
+                      setShowModal(true);
+                    }}
+                    onDelete={() => {
+                      setConfirmType("product");
+                      setConfirmId(row._id);
+                    }}
+                    onToggleStatus={() => {
+                      dispatch(
+                        toggleProductStatus({
+                          id: row._id,
+                          isActive: !row.isActive,
+                        }),
+                      )
+                        .unwrap()
+                        .then(() =>
+                          toast.success(
+                            `Marked ${!row.isActive ? "Active" : "Inactive"}`,
+                          ),
+                        )
+                        .catch(() => toast.error("Failed to update status"));
+                    }}
+                  />
                 );
               })}
-              {!filteredData.length && (
-                <tr>
-                  <td colSpan="11" className="text-center py-20">
-                    <div className="flex flex-col items-center gap-3 text-gray-400">
-                      <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center">
-                        <Package size={24} className="text-gray-300" />
-                      </div>
-                      <p className="text-sm font-medium">No products found</p>
-                      <p className="text-xs text-gray-300">
-                        Try adjusting your search or filter
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          </div>
+        )}
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100">
+          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100">
             <p className="text-xs text-gray-400">
               Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–
               {Math.min(currentPage * ITEMS_PER_PAGE, filteredData.length)} of{" "}
@@ -1358,6 +1491,18 @@ function Inventory() {
           </div>
         )}
       </div>
+
+      {viewRow && (
+        <ProductDetailModal
+          row={viewRow}
+          onClose={() => setViewRow(null)}
+          onEdit={() => {
+            setEditRow(viewRow);
+            setViewRow(null);
+            setShowModal(true);
+          }}
+        />
+      )}
 
       {showModal && (
         <ProductModal

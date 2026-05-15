@@ -1,7 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 import {
   fetchReports,
-  fetchFarmers,
+  fetchCustomers,
   fetchPrivateFiles,
 } from '../thunks/reportsThunk';
 
@@ -9,13 +9,13 @@ const initialState = {
   /* PURCHASE REPORTS */
   purchases: [],
 
-  /* FARMERS */
-  farmers: [],
+  /* customers */
+  customers: [],
 
   /* PRIVATE FILES
      structure:
      {
-       farmerId: {
+       customerId: {
          soilHealthCard: [],
          labReport: [],
          govtSchemeDocs: []
@@ -49,15 +49,15 @@ const reportsSlice = createSlice({
         state.error = action.payload;
       })
 
-      /* ================= FARMERS ================= */
-      .addCase(fetchFarmers.pending, (state) => {
+      /* ================= CUSTOMERS ================= */
+      .addCase(fetchCustomers.pending, (state) => {
         state.loading = true;
       })
-      .addCase(fetchFarmers.fulfilled, (state, action) => {
+      .addCase(fetchCustomers.fulfilled, (state, action) => {
         state.loading = false;
-        state.farmers = action.payload;
+        state.customers = action.payload;
       })
-      .addCase(fetchFarmers.rejected, (state, action) => {
+      .addCase(fetchCustomers.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
@@ -67,9 +67,9 @@ const reportsSlice = createSlice({
         // do NOT touch global loading — handled locally in the component
       })
       .addCase(fetchPrivateFiles.fulfilled, (state, action) => {
-        const { farmerId, type, files } = action.payload;
-        if (!state.files[farmerId]) state.files[farmerId] = {};
-        state.files[farmerId][type] = files;
+        const { customerId, type, files } = action.payload;
+        if (!state.files[customerId]) state.files[customerId] = {};
+        state.files[customerId][type] = files;
       })
       .addCase(fetchPrivateFiles.rejected, (state, action) => {
         state.error = action.payload;

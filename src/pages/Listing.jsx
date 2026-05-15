@@ -133,7 +133,7 @@ function Listing() {
             Crop Listings
           </h1>
           <p className="text-sm text-gray-500">
-            Farmer crop listings
+            Customer crop listings
           </p>
         </div>
         <div className="grid grid-cols-3 gap-3">
@@ -206,7 +206,7 @@ function Listing() {
           <input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by crop, farmer name..."
+            placeholder="Search by crop, customer name..."
             className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
         </div>
@@ -230,7 +230,7 @@ function Listing() {
             <tr>
               <th className="px-6 py-4 text-left">#</th>
               <th className="px-6 py-4 text-left">Image</th>
-              <th className="px-6 py-4 text-left">Farmer</th>
+              <th className="px-6 py-4 text-left">Customer</th>
               <th className="px-6 py-4 text-left">Crop</th>
               <th className="px-6 py-4 text-left">Quantity</th>
               <th className="px-6 py-4 text-left">Expected Price</th>
@@ -277,7 +277,7 @@ function Listing() {
                   <p className="font-medium text-gray-800">
                     {p.userId?.firstName} {p.userId?.lastName}
                   </p>
-                  <p className="text-xs text-gray-400">Farmer</p>
+                  <p className="text-xs text-gray-400">Customer</p>
                 </td>
                 <td className="px-6 py-4">
                   <p className="font-medium">{p.cropName}</p>
@@ -411,11 +411,11 @@ function Listing() {
               {/* IMAGE SLIDER */}
               {viewProduct.cropImages?.length > 0 ? (
                 <div>
-                  <div className="relative w-full h-56 bg-gray-100 rounded-xl overflow-hidden">
+                  <div className="relative w-full bg-gray-100 rounded-xl overflow-hidden flex items-center justify-center">
                     <img
                       src={viewProduct.cropImages[activeImg]?.url}
                       alt={`crop-${activeImg}`}
-                      className="w-full h-full object-cover"
+                      className="w-full h-auto max-h-80 object-contain"
                     />
                     <span className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full">
                       {activeImg + 1} / {viewProduct.cropImages.length}
@@ -537,10 +537,10 @@ function Listing() {
                 </div>
               </div>
 
-              {/* FARMER */}
+              {/* Customer */}
               <div>
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-                  Farmer
+                  Customer
                 </p>
                 <div className="bg-gray-50 rounded-lg p-3 flex items-center gap-3">
                   {(() => {
@@ -554,7 +554,7 @@ function Listing() {
                     const lastName =
                       member?.lastName ??
                       viewProduct.userId?.lastName ??
-                      "Farmer";
+                      "Customer";
                     const phone =
                       member?.phone ?? viewProduct.userId?.phone ?? null;
                     return (

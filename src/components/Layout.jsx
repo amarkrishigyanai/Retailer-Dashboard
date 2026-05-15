@@ -43,33 +43,33 @@ import "./google-lang-picker/google-translate.css";
 
 // ── Theme tokens ──────────────────────────────────────
 const G = {
-  // Sidebar — rich deep emerald green
-  sidebarBg: "linear-gradient(180deg, #022c22 0%, #064e3b 40%, #065f46 70%, #043f35 100%)",
-  sidebarBorder: "rgba(52,211,153,0.12)",
+  // Sidebar — glassmorphism (fresh teal-mint)
+  sidebarBg: "linear-gradient(160deg, rgba(10,58,46,0.88) 0%, rgba(8,90,68,0.84) 50%, rgba(5,110,82,0.80) 100%)",
+  sidebarBorder: "rgba(0,200,150,0.22)",
   activeNav:
-    "linear-gradient(90deg, rgba(52,211,153,0.22) 0%, rgba(16,185,129,0.08) 100%)",
-  hoverNav: "rgba(255,255,255,0.07)",
-  activeDot: "#34D399",
-  activeIcon: "#6EE7B7",
+    "linear-gradient(90deg, rgba(0,200,150,0.28) 0%, rgba(0,180,130,0.1) 100%)",
+  hoverNav: "rgba(255,255,255,0.08)",
+  activeDot: "#00c896",
+  activeIcon: "#5fffcb",
   activeText: "#ffffff",
-  mutedIcon: "rgba(255,255,255,0.85)",
-  mutedText: "rgba(255,255,255,0.92)",
+  mutedIcon: "rgba(255,255,255,0.72)",
+  mutedText: "rgba(255,255,255,0.80)",
   // Sidebar-specific accent colors
-  sidebarAccent: "#34D399",           // emerald-400
-  sidebarAccentSoft: "rgba(52,211,153,0.18)",
-  sidebarAccentBorder: "rgba(52,211,153,0.25)",
-  sidebarDivider: "rgba(167,243,208,0.1)",
-  sidebarBrandGlow: "0 0 20px rgba(52,211,153,0.25)",
+  sidebarAccent: "#00c896",
+  sidebarAccentSoft: "rgba(0,200,150,0.22)",
+  sidebarAccentBorder: "rgba(0,200,150,0.32)",
+  sidebarDivider: "rgba(0,200,150,0.12)",
+  sidebarBrandGlow: "0 0 24px rgba(0,200,150,0.35)",
   sidebarIconBg: "rgba(255,255,255,0.08)",
-  sidebarIconBgActive: "rgba(52,211,153,0.22)",
-  sidebarActiveShadow: "0 2px 12px rgba(52,211,153,0.15)",
-  sidebarActiveBar: "#34D399",
-  sidebarTagBg: "rgba(52,211,153,0.12)",
-  sidebarTagText: "#6EE7B7",
-  sidebarFooterBg: "rgba(255,255,255,0.06)",
-  sidebarUserGradient: "linear-gradient(135deg, #34D399, #10B981)",
-  sidebarOnlineDot: "#34D399",
-  sidebarOnlineBorder: "#022c22",
+  sidebarIconBgActive: "rgba(0,200,150,0.28)",
+  sidebarActiveShadow: "0 4px 20px rgba(0,200,150,0.25), inset 0 1px 0 rgba(255,255,255,0.12)",
+  sidebarActiveBar: "#00c896",
+  sidebarTagBg: "rgba(0,200,150,0.15)",
+  sidebarTagText: "#5fffcb",
+  sidebarFooterBg: "rgba(255,255,255,0.05)",
+  sidebarUserGradient: "linear-gradient(135deg, #00c896, #00a87e)",
+  sidebarOnlineDot: "#00c896",
+  sidebarOnlineBorder: "#0a3a2e",
   // Header
   header: "rgba(255,255,255,0.97)",
   headerBorder: "rgba(62,207,142,0.12)",
@@ -93,7 +93,7 @@ const G = {
   overlayBg: "rgba(15,23,42,0.55)",
   logoutIconBg: "#fee2e2",
   logoutIcon: "#991b1b",
-  pageBg: "#e8f5ee",
+  pageBg: "#0d2b1e",
 };
 
 const menuItems = [
@@ -200,76 +200,75 @@ export default function Layout() {
     globalSearch.trim().length < 2
       ? []
       : (() => {
-          const term = globalSearch.toLowerCase();
-          const results = [];
-          members
-            ?.filter(
-              (m) =>
-                `${m.firstName} ${m.lastName}`.toLowerCase().includes(term) ||
-                m.phone?.includes(term),
-            )
-            .slice(0, 3)
-            .forEach((m) =>
-              results.push({
-                icon: "👤",
-                label: `${m.firstName} ${m.lastName}`,
-                sub: `Member • +91 ${m.phone}`,
-                path: "/members",
-              }),
-            );
-          products
-            ?.filter(
-              (p) =>
-                p.cropName?.toLowerCase().includes(term) ||
-                `${p.userId?.firstName} ${p.userId?.lastName}`
-                  .toLowerCase()
-                  .includes(term),
-            )
-            .slice(0, 3)
-            .forEach((p) =>
-              results.push({
-                icon: "🌾",
-                label: p.cropName,
-                sub: `Listing • ${p.userId?.firstName} ${p.userId?.lastName} • ${p.status}`,
-                path: "/listing",
-              }),
-            );
-          orders
-            ?.filter(
-              (o) =>
-                `${o.farmer?.firstName} ${o.farmer?.lastName}`
-                  .toLowerCase()
-                  .includes(term) ||
-                o.crops?.some((c) => c.cropName?.toLowerCase().includes(term)),
-            )
-            .slice(0, 3)
-            .forEach((o) =>
-              results.push({
-                icon: "🛒",
-                label: `${o.farmer?.firstName} ${o.farmer?.lastName}`,
-                sub: `Procurement • ${o.crops?.map((c) => c.cropName).join(", ")}`,
-                path: "/procurement",
-              }),
-            );
-          coupons
-            ?.filter((c) => c.code?.toLowerCase().includes(term))
-            .slice(0, 3)
-            .forEach((c) =>
-              results.push({
-                icon: "🎟️",
-                label: c.code,
-                sub: `Coupon • ${c.discountType} • ${c.discountValue}`,
-                path: "/coupons",
-              }),
-            );
-          return results;
-        })();
+        const term = globalSearch.toLowerCase();
+        const results = [];
+        members
+          ?.filter(
+            (m) =>
+              `${m.firstName} ${m.lastName}`.toLowerCase().includes(term) ||
+              m.phone?.includes(term),
+          )
+          .slice(0, 3)
+          .forEach((m) =>
+            results.push({
+              icon: "👤",
+              label: `${m.firstName} ${m.lastName}`,
+              sub: `Member • +91 ${m.phone}`,
+              path: "/members",
+            }),
+          );
+        products
+          ?.filter(
+            (p) =>
+              p.cropName?.toLowerCase().includes(term) ||
+              `${p.userId?.firstName} ${p.userId?.lastName}`
+                .toLowerCase()
+                .includes(term),
+          )
+          .slice(0, 3)
+          .forEach((p) =>
+            results.push({
+              icon: "📦",
+              label: p.cropName,
+              sub: `Listing • ${p.userId?.firstName} ${p.userId?.lastName} • ${p.status}`,
+              path: "/listing",
+            }),
+          );
+        orders
+          ?.filter(
+            (o) =>
+              `${(o.customer || o.farmer)?.firstName} ${(o.customer || o.farmer)?.lastName}`
+                .toLowerCase()
+                .includes(term),
+          )
+          .slice(0, 3)
+          .forEach((o) =>
+            results.push({
+              icon: "🛒",
+              label: `${(o.customer || o.farmer)?.firstName} ${(o.customer || o.farmer)?.lastName}`,
+              sub: `Order • ${o.crops?.map((c) => c.cropName).join(", ") || ""}`,
+              path: "/procurement",
+            }),
+          );
+        coupons
+          ?.filter((c) => c.code?.toLowerCase().includes(term))
+          .slice(0, 3)
+          .forEach((c) =>
+            results.push({
+              icon: "🎟️",
+              label: c.code,
+              sub: `Coupon • ${c.discountType} • ${c.discountValue}`,
+              path: "/coupons",
+            }),
+          );
+        return results;
+      })();
 
   return (
     <div
       className="h-screen flex overflow-hidden"
       style={{
-        backgroundColor: G.pageBg,
+        background: "linear-gradient(135deg, #071f17 0%, #0a3a2a 45%, #083222 100%)",
         fontFamily: "Inter, system-ui, sans-serif",
       }}
     >
@@ -283,52 +282,69 @@ export default function Layout() {
 
       {/* ── SIDEBAR ── */}
       <aside
-        className={`fixed lg:static z-40 h-full w-64 flex flex-col transition-transform duration-300 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        }`}
+        className={`fixed lg:static z-40 h-full w-72 flex flex-col transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          }`}
         style={{
           background: G.sidebarBg,
+          backdropFilter: "blur(24px) saturate(200%)",
+          WebkitBackdropFilter: "blur(24px) saturate(200%)",
           borderRight: `1px solid ${G.sidebarBorder}`,
+          boxShadow: "4px 0 40px rgba(0,0,0,0.3), inset -1px 0 0 rgba(0,200,150,0.1)",
         }}
       >
         {/* BRAND */}
         <div
-          className="px-5 py-6"
-          style={{ borderBottom: `1px solid ${G.sidebarDivider}` }}
+          className="px-5 py-5"
+          style={{
+            borderBottom: `1px solid ${G.sidebarDivider}`,
+            background: "linear-gradient(180deg, rgba(0,200,150,0.1) 0%, transparent 100%)",
+          }}
         >
           <div className="flex items-center gap-3.5">
-            <div className="relative flex-shrink-0">
-              <div
-                className="w-12 h-12 rounded-2xl flex items-center justify-center overflow-hidden"
-                style={{
-                  background: G.sidebarUserGradient,
-                  boxShadow: `${G.sidebarBrandGlow}, inset 0 1px 0 rgba(255,255,255,0.15)`,
-                  border: "1px solid rgba(255,255,255,0.1)",
-                }}
-              >
-                <img
-                  src={theme.logo}
-                  alt={theme.shortName}
-                  className="w-9 h-9 object-contain"
-                  style={{ filter: "brightness(1.1)" }}
-                />
-              </div>
-              <span
-                className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full"
-                style={{
-                  backgroundColor: G.sidebarOnlineDot,
-                  border: `2.5px solid ${G.sidebarOnlineBorder}`,
-                  boxShadow: `0 0 8px ${G.sidebarAccent}`,
-                }}
+            {/* Logo */}
+            <div
+              className="relative flex-shrink-0 w-14 h-14 rounded-full flex items-center justify-center"
+              style={{
+                background: "#ffffff",
+                boxShadow: "0 0 0 2px rgba(0,200,150,0.6), 0 0 20px rgba(0,200,150,0.35)",
+                overflow: "hidden",
+              }}
+            >
+              <img
+                src={theme.logo}
+                alt={theme.shortName}
+                className="w-full h-full object-cover scale-125"
+                style={{ mixBlendMode: "multiply" }}
               />
             </div>
-            <div className="min-w-0 flex-1" translate="no">
-              <h1 className="text-[15px] font-extrabold leading-tight truncate" style={{ color: "#ffffff", letterSpacing: "-0.01em" }}>
-                {theme.shortName}
+
+            {/* Text */}
+            <div className="flex-1 min-w-0" translate="no">
+              <h1
+                className="text-[12px] font-black leading-snug"
+                style={{
+                  color: "#ffffff",
+                  textShadow: "0 2px 12px rgba(0,200,150,0.45)",
+                  letterSpacing: "0em",
+                  wordBreak: "break-word",
+                }}
+              >
+                {theme.brand}
               </h1>
-              <p className="text-[11px] mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.5)" }}>
-                {theme.tagline}
-              </p>
+              <div className="flex items-center gap-1.5 mt-1">
+                <span
+                  className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+                  style={{
+                    background: "linear-gradient(90deg, rgba(0,200,150,0.3), rgba(0,180,130,0.15))",
+                    border: "1px solid rgba(0,200,150,0.35)",
+                    color: "#5fffcb",
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Admin Panel
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -348,58 +364,82 @@ export default function Layout() {
                   navigate(item.path);
                   setSidebarOpen(false);
                 }}
-                className="w-full flex items-center gap-3 px-3.5 py-2.5 mb-0.5 transition-all duration-200 relative"
+                className="w-full flex items-center gap-3.5 px-4 py-3.5 mb-1.5 transition-all duration-200 relative group"
                 style={{
-                  borderRadius: "10px",
-                  background: active ? G.activeNav : "transparent",
-                  color: active ? "#ffffff" : G.mutedText,
-                  fontWeight: active ? 700 : 500,
-                  fontSize: "13.5px",
+                  borderRadius: "14px",
+                  background: active
+                    ? "linear-gradient(90deg, rgba(0,200,150,0.28) 0%, rgba(0,180,130,0.1) 100%)"
+                    : "transparent",
+                  border: active
+                    ? "1px solid rgba(0,200,150,0.35)"
+                    : "1px solid transparent",
+                  backdropFilter: active ? "blur(8px)" : "none",
+                  boxShadow: active ? G.sidebarActiveShadow : "none",
+                  fontSize: "14.5px",
                   letterSpacing: "0.01em",
-                  borderLeft: active
-                    ? `3px solid ${G.sidebarActiveBar}`
-                    : "3px solid transparent",
-                  boxShadow: active
-                    ? G.sidebarActiveShadow
-                    : "none",
                 }}
                 onMouseEnter={(e) => {
                   if (!active) {
-                    e.currentTarget.style.background = G.hoverNav;
-                    e.currentTarget.style.color = "#ffffff";
+                    e.currentTarget.style.background = "rgba(255,255,255,0.07)";
+                    e.currentTarget.style.border = "1px solid rgba(255,255,255,0.1)";
+                    e.currentTarget.style.backdropFilter = "blur(6px)";
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!active) {
                     e.currentTarget.style.background = "transparent";
-                    e.currentTarget.style.color = G.mutedText;
+                    e.currentTarget.style.border = "1px solid transparent";
+                    e.currentTarget.style.backdropFilter = "none";
                   }
                 }}
               >
+                {/* Active left glow bar */}
+                {active && (
+                  <span
+                    className="absolute left-0 top-1/2 -translate-y-1/2 w-1 rounded-r-full"
+                    style={{
+                      height: "60%",
+                      background: "linear-gradient(180deg, #5fffcb, #00c896)",
+                      boxShadow: "0 0 10px #00c896",
+                    }}
+                  />
+                )}
                 <span
-                  className="w-7 h-7 flex items-center justify-center rounded-lg flex-shrink-0"
+                  className="w-9 h-9 flex items-center justify-center rounded-xl flex-shrink-0"
                   style={{
-                    backgroundColor: active
-                      ? G.sidebarIconBgActive
-                      : G.sidebarIconBg,
+                    background: active
+                      ? "linear-gradient(135deg, rgba(0,200,150,0.38), rgba(0,180,130,0.2))"
+                      : "rgba(255,255,255,0.07)",
+                    border: active
+                      ? "1px solid rgba(0,200,150,0.45)"
+                      : "1px solid rgba(255,255,255,0.08)",
+                    boxShadow: active ? "0 0 14px rgba(0,200,150,0.35)" : "none",
                   }}
                 >
                   <Icon
-                    className="w-3.5 h-3.5"
-                    style={{ color: active ? G.activeIcon : G.mutedIcon }}
+                    className="w-4.5 h-4.5"
+                    style={{ width: 18, height: 18, color: active ? "#5fffcb" : "rgba(255,255,255,0.7)" }}
                   />
                 </span>
-                <span className="truncate" style={{ color: "#ffffff", fontWeight: 700 }}>{item.label}</span>
+                <span
+                  className="truncate text-[16px]"
+                  style={{
+                    color: active ? "#ffffff" : "rgba(255,255,255,0.88)",
+                    fontWeight: 700,
+                    letterSpacing: "0.01em",
+                    textShadow: active ? "0 1px 8px rgba(0,200,150,0.3)" : "none",
+                  }}
+                >
+                  {item.label}
+                </span>
                 {active && (
                   <span
-                    className="ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+                    className="ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0"
                     style={{
-                      backgroundColor: G.sidebarAccentSoft,
-                      color: G.sidebarAccent,
+                      backgroundColor: "#00c896",
+                      boxShadow: "0 0 8px #00c896",
                     }}
-                  >
-                    ●
-                  </span>
+                  />
                 )}
               </button>
             );
@@ -409,33 +449,44 @@ export default function Layout() {
         {/* SIDEBAR FOOTER */}
         <div
           className="px-4 py-4"
-          style={{ borderTop: `1px solid ${G.sidebarDivider}` }}
+          style={{
+            borderTop: `1px solid ${G.sidebarDivider}`,
+            background: "linear-gradient(0deg, rgba(0,0,0,0.15) 0%, transparent 100%)",
+          }}
         >
-          <div
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
-            style={{ backgroundColor: G.sidebarFooterBg }}
+          <button
+            onClick={() => setShowLogoutConfirm(true)}
+            className="w-full flex items-center gap-3 px-3 py-2.5 transition-all duration-200"
+            style={{
+              borderRadius: "12px",
+              background: "rgba(180,30,30,0.35)",
+              border: "1px solid rgba(220,50,50,0.4)",
+              backdropFilter: "blur(8px)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(180,30,30,0.55)";
+              e.currentTarget.style.border = "1px solid rgba(220,50,50,0.6)";
+              e.currentTarget.style.boxShadow = "0 4px 20px rgba(180,30,30,0.4)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(180,30,30,0.35)";
+              e.currentTarget.style.border = "1px solid rgba(220,50,50,0.4)";
+              e.currentTarget.style.boxShadow = "none";
+            }}
           >
             <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
+              className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
               style={{
-                background: G.sidebarUserGradient,
-                color: "#fff",
+                background: "linear-gradient(135deg, rgba(200,40,40,0.6), rgba(160,20,20,0.5))",
+                border: "1px solid rgba(220,60,60,0.5)",
               }}
             >
-              {me?.firstName?.charAt(0)?.toUpperCase() || "A"}
+              <LogOut className="w-4 h-4" style={{ color: "#fca5a5" }} />
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold truncate" style={{ color: "#ffffff" }}>
-                {me ? `${me.firstName} ${me.lastName}` : "..."}
-              </p>
-              <p
-                className="text-[10px] truncate"
-                style={{ color: G.mutedText }}
-              >
-                {me?.role || ""}
-              </p>
-            </div>
-          </div>
+            <span className="text-xs font-semibold" style={{ color: "#ffffff" }}>
+              Logout
+            </span>
+          </button>
         </div>
       </aside>
 
@@ -509,7 +560,7 @@ export default function Layout() {
                 value={globalSearch}
                 onChange={handleSearchChange}
                 onFocus={() => setShowResults(true)}
-                placeholder="Search members, crops, orders..."
+                placeholder="Search members, products, orders..."
                 className="w-full pl-9 pr-4 py-2 rounded-xl text-sm focus:outline-none transition"
                 style={{
                   backgroundColor: G.searchBg,
@@ -571,8 +622,8 @@ export default function Layout() {
                               borderBottom: "1px solid rgba(0,0,0,0.05)",
                             }}
                             onMouseEnter={(e) =>
-                              (e.currentTarget.style.backgroundColor =
-                                G.activeNav)
+                            (e.currentTarget.style.backgroundColor =
+                              G.activeNav)
                             }
                             onMouseLeave={(e) =>
                               (e.currentTarget.style.backgroundColor = "")
@@ -682,8 +733,8 @@ export default function Layout() {
                           className="flex gap-3 px-5 py-4 transition cursor-pointer"
                           style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}
                           onMouseEnter={(e) =>
-                            (e.currentTarget.style.backgroundColor =
-                              G.activeNav)
+                          (e.currentTarget.style.backgroundColor =
+                            G.activeNav)
                           }
                           onMouseLeave={(e) =>
                             (e.currentTarget.style.backgroundColor = "")

@@ -45,7 +45,7 @@ export const fetchMemberCrops = createAsyncThunk(
   'members/fetchCrops',
   async (userId, { rejectWithValue }) => {
     try {
-      const res = await api.get(`/crop/getCropsByUser`);
+      const res = await api.get(`/crop/getCropsByUser`, { params: { userId } });
       return res.data.data;
     } catch (err) {
       return rejectWithValue(err.response?.data?.message || 'Failed to fetch crops');
@@ -90,16 +90,15 @@ export const createStaff = createAsyncThunk(
   }
 );
 
-export const createFarmer = createAsyncThunk(
-  'members/createFarmer',
+export const createCustomer = createAsyncThunk(
+  'members/createCustomer',
   async (data, { rejectWithValue }) => {
     try {
       const res = await api.post('/user/register', data);
-      // NOTE: this endpoint returns a token for the new farmer — do NOT store it
       return res.data.user ?? res.data.data ?? res.data;
     } catch (err) {
       return rejectWithValue(
-        err.response?.data?.message || 'Failed to create farmer'
+        err.response?.data?.message || 'Failed to create customer'
       );
     }
   }
@@ -108,20 +107,6 @@ export const createFarmer = createAsyncThunk(
 export const deleteMember = createAsyncThunk(
   'members/delete',
   async (id, { rejectWithValue }) => {
-    try {
-      // try admin route first, fall back to user route
-      try {
-        await api.delete(`/admin/deleteUser/${id}`);
-      } catch (e) {
-        if (e.response?.status === 404) {
-          await api.delete(`/admin/delete-user/${id}`);
-        } else throw e;
-      }
-      return id;
-    } catch (err) {
-      return rejectWithValue(
-        err.response?.data?.message || 'Failed to delete member'
-      );
-    }
+    return rejectWithValue('Delete user endpoint not available in API. Contact backend developer.');
   }
 );

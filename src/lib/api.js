@@ -22,7 +22,7 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => {
     // Strip token from registration responses so new-user tokens
-    // never overwrite the logged-in FPO session
+    // never overwrite the logged-in Retailer session
     const url = response.config?.url || "";
     if (
       response.data?.token &&

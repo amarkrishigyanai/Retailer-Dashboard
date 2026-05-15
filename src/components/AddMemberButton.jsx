@@ -3,7 +3,7 @@ import { useDispatch } from "react-redux";
 import {
   fetchMembers,
   createStaff,
-  createFarmer,
+  createCustomer,
 } from "../store/thunks/membersThunk";
 import { UserPlus, ChevronDown, X } from "lucide-react";
 
@@ -100,8 +100,8 @@ function LocationFields({ form, set }) {
   );
 }
 
-/* ─── Farmer Modal ────────────────────────────────────────── */
-function FarmerModal({ onClose }) {
+/* ─── Customer Modal ────────────────────────────────────────── */
+function CustomerModal({ onClose }) {
   const dispatch = useDispatch();
   const [form, setForm] = useState({
     firstName: "",
@@ -112,10 +112,7 @@ function FarmerModal({ onClose }) {
     village: "",
     district: "",
     state: "",
-    farmerCategory: "medium",
-    bankName: "",
-    ifscCode: "",
-    accountNumber: "",
+    emailId: "",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -126,74 +123,34 @@ function FarmerModal({ onClose }) {
     setError("");
     setLoading(true);
     const payload = {
-      role: "Farmer",
+      role: "Customer",
       ...Object.fromEntries(Object.entries(form).filter(([, v]) => v !== "")),
     };
-    const result = await dispatch(createFarmer(payload));
+    const result = await dispatch(createCustomer(payload));
     setLoading(false);
-    if (createFarmer.fulfilled.match(result)) {
+    if (createCustomer.fulfilled.match(result)) {
       dispatch(fetchMembers());
       onClose();
-    } else setError(result.payload || "Failed to create farmer");
+    } else setError(result.payload || "Failed to create customer");
   };
 
   return (
-    <ModalShell title="Add New Farmer" onClose={onClose}>
+    <ModalShell title="Add New Customer" onClose={onClose}>
       <form
         onSubmit={handleSubmit}
         className="p-5 space-y-3 max-h-[75vh] overflow-y-auto"
       >
         <div className="grid grid-cols-2 gap-3">
-          <Field
-            label="First Name"
-            k="firstName"
-            form={form}
-            set={set}
-            required
-          />
+          <Field label="First Name" k="firstName" form={form} set={set} required />
           <Field label="Last Name" k="lastName" form={form} set={set} />
           <Field label="Mobile" k="phone" form={form} set={set} required />
-          <Field
-            label="Password"
-            k="password"
-            form={form}
-            set={set}
-            type="password"
-            required
-          />
+          <Field label="Password" k="password" form={form} set={set} type="password" required />
+          <Field label="Email" k="emailId" form={form} set={set} />
           <GenderSelect value={form.gender} onChange={set("gender")} />
-          <div>
-            <label className="text-xs text-gray-500 mb-1 block">
-              Farmer Category
-            </label>
-            <select
-              value={form.farmerCategory}
-              onChange={set("farmerCategory")}
-              className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500"
-            >
-              <option value="small">Small</option>
-              <option value="medium">Medium</option>
-              <option value="large">Large</option>
-            </select>
-          </div>
         </div>
         <LocationFields form={form} set={set} />
-        <div className="grid grid-cols-3 gap-3">
-          <Field label="Bank Name" k="bankName" form={form} set={set} />
-          <Field label="IFSC Code" k="ifscCode" form={form} set={set} />
-          <Field
-            label="Account Number"
-            k="accountNumber"
-            form={form}
-            set={set}
-          />
-        </div>
         {error && <p className="text-xs text-red-500">{error}</p>}
-        <ModalFooter
-          onClose={onClose}
-          loading={loading}
-          label="Register Farmer"
-        />
+        <ModalFooter onClose={onClose} loading={loading} label="Register Customer" />
       </form>
     </ModalShell>
   );
@@ -319,8 +276,8 @@ function StaffModal({ onClose }) {
   );
 }
 
-/* ─── FPO Modal ───────────────────────────────────────────── */
-function FPOModal({ onClose }) {
+/* ─── Retailer Modal ─────────────────────────────────────── */
+function RetailerModal({ onClose }) {
   const dispatch = useDispatch();
   const [form, setForm] = useState({
     firstName: "",
@@ -344,7 +301,7 @@ function FPOModal({ onClose }) {
     setError("");
     setLoading(true);
     const payload = {
-      role: "FPO",
+      role: "Retailer",
       ...Object.fromEntries(Object.entries(form).filter(([, v]) => v !== "")),
     };
     const result = await dispatch(createStaff(payload));
@@ -352,11 +309,11 @@ function FPOModal({ onClose }) {
     if (createStaff.fulfilled.match(result)) {
       dispatch(fetchMembers());
       onClose();
-    } else setError(result.payload || "Failed to create FPO");
+    } else setError(result.payload || "Failed to create Retailer");
   };
 
   return (
-    <ModalShell title="Add New FPO" onClose={onClose}>
+    <ModalShell title="Add New Retailer" onClose={onClose}>
       <form onSubmit={handleSubmit} className="p-5 space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <Field label="First Name" k="firstName" form={form} set={set} />
@@ -376,7 +333,7 @@ function FPOModal({ onClose }) {
         </div>
         <LocationFields form={form} set={set} />
         {error && <p className="text-xs text-red-500">{error}</p>}
-        <ModalFooter onClose={onClose} loading={loading} label="Create FPO" />
+        <ModalFooter onClose={onClose} loading={loading} label="Create Retailer" />
       </form>
     </ModalShell>
   );
@@ -418,10 +375,10 @@ export default function AddMemberButton() {
         {open && (
           <div className="absolute right-0 top-full mt-2 w-44 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
             <button
-              onClick={() => pick("farmer")}
+              onClick={() => pick("customer")}
               className="w-full flex items-center gap-2.5 px-4 py-3 text-sm text-gray-700 hover:bg-brand-50 transition"
             >
-              🌾 Add Farmer
+              🛍️ Add Customer
             </button>
             <button
               onClick={() => pick("staff")}
@@ -433,9 +390,9 @@ export default function AddMemberButton() {
         )}
       </div>
 
-      {modal === "farmer" && <FarmerModal onClose={() => setModal(null)} />}
-      {modal === "staff" && <StaffModal onClose={() => setModal(null)} />}
-      {modal === "fpo" && <FPOModal onClose={() => setModal(null)} />}
+      {modal === "customer" && <CustomerModal onClose={() => setModal(null)} />}
+      {modal === "staff" && <StaffModal onClose={() => setModal(null)} />
+      }
     </>
   );
 }

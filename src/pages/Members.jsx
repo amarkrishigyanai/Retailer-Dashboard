@@ -6,9 +6,8 @@ import {
   X,
   User,
   Users,
-  Tractor,
+  ShoppingBag,
   Briefcase,
-  Sprout,
   ShoppingCart,
   Package,
   ChevronRight,
@@ -65,16 +64,16 @@ function SkeletonRow() {
   );
 }
 
-const FARMER_TABS = ["Info", "Crops", "Listings", "Purchases", "Documents"];
+const CUSTOMER_TABS = ["Info", "Orders", "Documents"];
 const STAFF_TABS = ["Info", "Documents"];
-const getTabs = (role) => (role === "Staff" ? STAFF_TABS : FARMER_TABS);
+const getTabs = (role) => (role === "Staff" ? STAFF_TABS : CUSTOMER_TABS);
 
 function Members() {
   const dispatch = useDispatch();
   const { members, loading } = useSelector((state) => state.members);
 
   const ITEMS_PER_PAGE = 9;
-  const [activeMainTab, setActiveMainTab] = useState("Farmers");
+  const [activeMainTab, setActiveMainTab] = useState("Customers");
   const [farmerPage, setFarmerPage] = useState(1);
   const [staffPage, setStaffPage] = useState(1);
   const [retailerPage, setRetailerPage] = useState(1);
@@ -199,13 +198,13 @@ function Members() {
   }, [dispatch]);
 
   const counts = {
-    total: members.filter((m) => m.role !== "FPO").length,
-    farmer: members.filter((m) => m.role === "Farmer").length,
+    total: members.filter((m) => m.role !== "Retailer").length,
+    customer: members.filter((m) => m.role === "Farmer").length,
     staff: members.filter((m) => m.role === "Staff").length,
     retailer: members.filter((m) => m.role === "Retailer").length,
   };
 
-  const filteredFarmers = members.filter(
+  const filteredCustomers = members.filter(
     (m) =>
       m.role === "Farmer" &&
       `${m.firstName} ${m.lastName} ${m.phone}`
@@ -227,9 +226,9 @@ function Members() {
         .includes(retailerSearch.toLowerCase()),
   );
 
-  const farmerTotalPages = Math.ceil(filteredFarmers.length / ITEMS_PER_PAGE);
+  const farmerTotalPages = Math.ceil(filteredCustomers.length / ITEMS_PER_PAGE);
   const farmerStart = (farmerPage - 1) * ITEMS_PER_PAGE;
-  const paginatedFarmers = filteredFarmers.slice(
+  const paginatedFarmers = filteredCustomers.slice(
     farmerStart,
     farmerStart + ITEMS_PER_PAGE,
   );
@@ -255,7 +254,7 @@ function Members() {
         <div>
           <h1 className="text-2xl font-semibold">Member Management</h1>
           <p className="text-sm text-gray-500">
-            Manage FPO members and their profiles
+            Manage members and their profiles
           </p>
         </div>
         <AddMemberButton />
@@ -271,9 +270,9 @@ function Members() {
             color: "bg-blue-50 text-blue-600",
           },
           {
-            label: "Farmers",
-            value: counts.farmer,
-            icon: Tractor,
+            label: "Customers",
+            value: counts.customer,
+            icon: ShoppingBag,
             color: "bg-brand-50 text-brand-600",
           },
           {
@@ -311,7 +310,7 @@ function Members() {
       {/* MAIN TABS */}
       <div className="flex border-b">
         {[
-          { key: "Farmers", icon: Tractor, color: "text-brand-600", count: counts.farmer },
+          { key: "Customers", icon: ShoppingBag, color: "text-brand-600", count: counts.customer },
           { key: "Staff", icon: Briefcase, color: "text-yellow-600", count: counts.staff },
           { key: "Retailers", icon: Store, color: "text-purple-600", count: counts.retailer },
         ].map(({ key, icon: Icon, color, count }) => (
@@ -335,19 +334,19 @@ function Members() {
         ))}
       </div>
 
-      {/* FARMERS TABLE */}
-      {activeMainTab === "Farmers" && <div className="space-y-3">
+      {/* CUSTOMERS TABLE */}
+      {activeMainTab === "Customers" && <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Tractor className="w-5 h-5 text-brand-600" />
-            <h2 className="text-base font-semibold text-gray-800">Farmers</h2>
+            <ShoppingBag className="w-5 h-5 text-brand-600" />
+            <h2 className="text-base font-semibold text-gray-800">Customers</h2>
             <span className="px-2 py-0.5 text-xs font-medium bg-brand-100 text-brand-700 rounded-full">
-              {counts.farmer}
+              {counts.customer}
             </span>
           </div>
           <input
             type="text"
-            placeholder="Search farmers..."
+            placeholder="Search customers..."
             value={farmerSearch}
             onChange={(e) => {
               setFarmerSearch(e.target.value);
@@ -382,7 +381,7 @@ function Members() {
                         onClick={() => openDetail(m)}
                       >
                         <td className="px-6 py-4 font-medium">
-                          FPO-{m._id?.slice(-6).toUpperCase()}
+                          RET-{m._id?.slice(-6).toUpperCase()}
                         </td>
                         <td className="px-6 py-4 font-medium text-brand-700">
                           {m.firstName} {m.lastName}
@@ -414,13 +413,13 @@ function Members() {
                       </tr>
                     );
                   })}
-              {!loading && !filteredFarmers.length && (
+              {!loading && !filteredCustomers.length && (
                 <tr>
                   <td colSpan="6" className="py-10 text-center">
                     <div className="flex flex-col items-center gap-2 text-gray-400">
-                      <Tractor className="w-7 h-7" />
+                      <ShoppingBag className="w-7 h-7" />
                       <p className="text-sm">
-                        No farmers found
+                        No customers found
                         {farmerSearch && ` for "${farmerSearch}"`}
                       </p>
                       {farmerSearch && (
@@ -442,8 +441,8 @@ function Members() {
           <div className="flex items-center justify-between text-sm text-gray-500">
             <span>
               Showing {farmerStart + 1}–
-              {Math.min(farmerStart + ITEMS_PER_PAGE, filteredFarmers.length)}{" "}
-              of {filteredFarmers.length}
+              {Math.min(farmerStart + ITEMS_PER_PAGE, filteredCustomers.length)}{" "}
+              of {filteredCustomers.length}
             </span>
             <div className="flex gap-2">
               <button
@@ -513,7 +512,7 @@ function Members() {
                       onClick={() => openDetail(m)}
                     >
                       <td className="px-6 py-4 font-medium">
-                        FPO-{m._id?.slice(-6).toUpperCase()}
+                        RET-{m._id?.slice(-6).toUpperCase()}
                       </td>
                       <td className="px-6 py-4 font-medium text-yellow-700">
                         {m.firstName} {m.lastName}
@@ -624,7 +623,7 @@ function Members() {
                     const kycStatus = m.kycStatus || "Pending";
                     return (
                       <tr key={m._id} className="cursor-pointer hover:bg-gray-50" onClick={() => openDetail(m)}>
-                        <td className="px-6 py-4 font-medium">FPO-{m._id?.slice(-6).toUpperCase()}</td>
+                        <td className="px-6 py-4 font-medium">RET-{m._id?.slice(-6).toUpperCase()}</td>
                         <td className="px-6 py-4 font-medium text-purple-700">{m.firstName} {m.lastName}</td>
                         <td className="px-6 py-4">+91 {m.phone}</td>
                         <td className="px-6 py-4 text-gray-500">{m.emailId || "—"}</td>
@@ -702,7 +701,7 @@ function Members() {
                   </h2>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-sm text-brand-100">
-                      FPO-{detailMember._id?.slice(-6).toUpperCase()}
+                      RET-{detailMember._id?.slice(-6).toUpperCase()}
                     </span>
                     <span className="w-1 h-1 bg-brand-300 rounded-full" />
                     <span className="text-sm text-brand-100">
@@ -737,7 +736,6 @@ function Members() {
             </div>
 
             <div className="p-6 overflow-y-auto flex-1">
-              {/* INFO TAB */}
               {activeTab === "Info" &&
                 (editForm ? (
                   <form onSubmit={handleUpdate} className="space-y-3">
@@ -828,7 +826,7 @@ function Members() {
                             label="Member ID"
                             value={
                               detailMember._id
-                                ? `FPO-${detailMember._id.slice(-6).toUpperCase()}`
+                                ? `RET-${detailMember._id.slice(-6).toUpperCase()}`
                                 : ""
                             }
                           />
@@ -863,160 +861,37 @@ function Members() {
                     ) : (
                       <>
                         <Section icon={User} title="Basic Info">
-                          <Field
-                            label="Phone"
-                            value={`+91 ${detailMember.phone}`}
-                          />
-                          <Field
-                            label="Member ID"
-                            value={
-                              detailMember._id
-                                ? `FPO-${detailMember._id.slice(-6).toUpperCase()}`
-                                : ""
-                            }
-                          />
-                          <Field
-                            label="Status"
-                            value={detailMember.status || "Active"}
-                          />
-                          <Field
-                            label="KYC Status"
-                            value={detailMember.kycStatus || "Pending"}
-                          />
+                          <Field label="Phone" value={`+91 ${detailMember.phone}`} />
+                          <Field label="Member ID" value={detailMember._id ? `RET-${detailMember._id.slice(-6).toUpperCase()}` : ""} />
+                          <Field label="Status" value={detailMember.status || "Active"} />
+                          <Field label="KYC Status" value={detailMember.kycStatus || "Pending"} />
                           <Field label="Gender" value={detailMember.gender} />
                           <Field label="Email" value={detailMember.emailId} />
                           <Field label="Village" value={detailMember.village} />
-                          <Field
-                            label="District"
-                            value={detailMember.district}
-                          />
+                          <Field label="District" value={detailMember.district} />
                           <Field label="State" value={detailMember.state} />
-                        </Section>
-                        <Section icon={Tractor} title="Farm Details">
-                          <Field
-                            label="Farmer Category"
-                            value={detailMember.farmerCategory}
-                          />
-                          <Field
-                            label="Land Area"
-                            value={
-                              detailMember.landArea
-                                ? `${detailMember.landArea} acres`
-                                : undefined
-                            }
-                          />
-                          <Field
-                            label="Bank Name"
-                            value={detailMember.bankName}
-                          />
-                          <Field
-                            label="Account No"
-                            value={detailMember.accountNumber}
-                          />
-                          <Field label="IFSC" value={detailMember.ifscCode} />
                         </Section>
                       </>
                     )}
                   </div>
                 ))}
 
-              {/* CROPS TAB */}
-              {activeTab === "Crops" &&
+              {/* ORDERS TAB */}
+              {activeTab === "Orders" &&
                 (tabLoading ? (
-                  <p className="text-sm text-gray-400 text-center py-8">
-                    Loading...
-                  </p>
-                ) : !tabData.Crops?.length ? (
-                  <p className="text-sm text-gray-400 text-center py-8">
-                    No crops found
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {tabData.Crops.map((c) => (
-                      <div
-                        key={c._id}
-                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
-                      >
-                        <Sprout className="w-4 h-4 text-brand-600 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-800">
-                            {c.cropName}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            Area: {c.area} {c.unit} • Sown:{" "}
-                            {c.sowingDate
-                              ? new Date(c.sowingDate).toLocaleDateString(
-                                  "en-IN",
-                                )
-                              : "—"}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-
-              {/* LISTINGS TAB */}
-              {activeTab === "Listings" &&
-                (tabLoading ? (
-                  <p className="text-sm text-gray-400 text-center py-8">
-                    Loading...
-                  </p>
-                ) : !tabData.Listings?.length ? (
-                  <p className="text-sm text-gray-400 text-center py-8">
-                    No listings found
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {tabData.Listings.map((l) => (
-                      <div
-                        key={l._id}
-                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
-                      >
-                        <Package className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-800">
-                            {l.cropName}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            Qty: {l.quantity} • Price: ₹{l.price} • Status:{" "}
-                            {l.status}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-
-              {/* PURCHASES TAB */}
-              {activeTab === "Purchases" &&
-                (tabLoading ? (
-                  <p className="text-sm text-gray-400 text-center py-8">
-                    Loading...
-                  </p>
+                  <p className="text-sm text-gray-400 text-center py-8">Loading...</p>
                 ) : !tabData.Purchases?.length ? (
-                  <p className="text-sm text-gray-400 text-center py-8">
-                    No purchases found
-                  </p>
+                  <p className="text-sm text-gray-400 text-center py-8">No orders found</p>
                 ) : (
                   <div className="space-y-2">
                     {tabData.Purchases.map((p) => (
-                      <div
-                        key={p._id}
-                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
-                      >
+                      <div key={p._id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
                         <ShoppingCart className="w-4 h-4 text-purple-600 flex-shrink-0" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-800">
-                            {p.crop}
-                          </p>
+                          <p className="text-sm font-medium text-gray-800">{p.crop}</p>
                           <p className="text-xs text-gray-500">
                             Qty: {p.quantity} • Rate: ₹{p.rate} •{" "}
-                            {p.procurementDate
-                              ? new Date(p.procurementDate).toLocaleDateString(
-                                  "en-IN",
-                                )
-                              : "—"}
+                            {p.procurementDate ? new Date(p.procurementDate).toLocaleDateString("en-IN") : "—"}
                           </p>
                         </div>
                         <span className="text-sm font-semibold text-gray-700">

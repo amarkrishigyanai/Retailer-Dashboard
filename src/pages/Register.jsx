@@ -109,7 +109,7 @@ function Register() {
     const trimmed = Object.fromEntries(
       Object.entries(form).map(([k, v]) => [k, typeof v === "string" ? v.trim() : v])
     );
-    dispatch(registerUser({ ...trimmed, role: "Distributor" }));
+    dispatch(registerUser({ ...trimmed, role: "Retailer" }));
   };
 
   const strength = form.password ? passwordStrength(form.password) : null;
@@ -249,7 +249,7 @@ function Register() {
                 <div className="relative">
                   <InputIcon icon={Store} />
                   <input name="shopName" required disabled={loading} value={form.shopName} onChange={handleChange}
-                    style={iconInputStyle} placeholder="Marjeevi FPO" onFocus={focusStyle} onBlur={blurStyle} />
+                    style={iconInputStyle} placeholder="Your Shop Name" onFocus={focusStyle} onBlur={blurStyle} />
                 </div>
               </div>
               <div>
@@ -342,7 +342,7 @@ function Register() {
             Empowering<br />Farmers Together
           </h2>
           <p className="text-sm leading-relaxed max-w-sm mb-10" style={{ color: "#fae0d8" }}>
-            A modern platform built for Farmer Producer Organizations — manage your entire operation from one place.
+            A modern platform built for Retailers & Distributors — manage your entire operation from one place.
           </p>
           <div className="space-y-4">
             {FEATURES.map(({ icon: Icon, text }) => (

@@ -61,7 +61,7 @@ export const recordFarmerPayment = createAsyncThunk(
 );
 
 export const recordFpoPayment = createAsyncThunk(
-  'ledger/fpoPayment',
+  'ledger/retailerPayment',
   async ({ farmerId, amount, paymentMethod }, { rejectWithValue }) => {
     try {
       const res = await api.post('payment/fpo-payment', { farmerId, amount, paymentMethod });
@@ -77,7 +77,7 @@ export const recordFpoPayment = createAsyncThunk(
         || err.response?.data
         || err.message
         || 'Payment failed';
-      console.error('recordFpoPayment error:', err.response?.status, err.response?.data);
+      console.error('recordRetailerPayment error:', err.response?.status, err.response?.data);
       return rejectWithValue(typeof msg === 'string' ? msg : JSON.stringify(msg));
     }
   }

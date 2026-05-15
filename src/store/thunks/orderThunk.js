@@ -1,11 +1,17 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../lib/api';
 
+// Normalize order: map farmer → customer
+const normalize = (o) => ({
+  ...o,
+  customer: o.farmer ?? o.customer ?? o.buyer ?? o.placedBy ?? o.user ?? null,
+});
+
 export const fetchAllOrders = createAsyncThunk('orders/fetchAll', async (_, { rejectWithValue }) => {
   try {
     const res = await api.get('order/allOrders');
     const payload = res.data.data ?? res.data;
-    return Array.isArray(payload) ? payload : [];
+    return (Array.isArray(payload) ? payload : []).map(normalize);
   } catch (err) {
     return rejectWithValue(err.response?.data?.message || 'Failed to fetch orders');
   }

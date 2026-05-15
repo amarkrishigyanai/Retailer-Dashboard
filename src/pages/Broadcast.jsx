@@ -124,7 +124,7 @@ function Broadcast() {
         <div>
           <h1 className="text-2xl font-semibold">Broadcast Notifications</h1>
           <p className="text-sm text-gray-500">
-            Send announcements to farmers and staff
+            Send announcements to customers and staff
           </p>
         </div>
         <button
@@ -251,7 +251,7 @@ function Broadcast() {
                   Description
                 </label>
                 <textarea
-                  placeholder="e.g., We are starting wheat procurement from next Monday. All farmers are requested to bring their produce to the collection center."
+                  placeholder="e.g., We are starting wheat procurement from next Monday. All customers are requested to bring their produce to the collection center."
                   className="border px-3 py-2 rounded-lg w-full h-24"
                   value={formData.description}
                   onChange={(e) =>

@@ -7,11 +7,16 @@ const initialState = {
     approvedListings: 0,
     totalOrders: 0,
     totalProcurementValue: 0,
+    pendingDeliveries: 0,
   },
-  chartData: [],
-  dailyListings: [],
+  topCropsChart: [],
   recentActivity: [],
-  allListings: [], // ✅ ADD
+  allListings: [],
+  revenueOrdersChart: [],
+  procVsSalesChart: [],
+  memberGrowthChart: [],
+  topProductsChart: [],
+  inventoryStockChart: [],
   loading: false,
   error: null,
 };
@@ -28,10 +33,14 @@ const dashboardSlice = createSlice({
       .addCase(getDashboardData.fulfilled, (state, action) => {
         state.loading = false;
         state.stats = action.payload.stats;
-        state.chartData = action.payload.chartData;
-        state.dailyListings = action.payload.dailyListings;
+        state.topCropsChart = action.payload.topCropsChart;
         state.recentActivity = action.payload.recentActivity;
-         state.allListings = action.payload.allListings; // ✅ ADD
+        state.allListings = action.payload.allListings;
+        state.revenueOrdersChart = action.payload.revenueOrdersChart;
+        state.procVsSalesChart = action.payload.procVsSalesChart;
+        state.memberGrowthChart = action.payload.memberGrowthChart;
+        state.topProductsChart = action.payload.topProductsChart;
+        state.inventoryStockChart = action.payload.inventoryStockChart;
       })
       .addCase(getDashboardData.rejected, (state, action) => {
         state.loading = false;

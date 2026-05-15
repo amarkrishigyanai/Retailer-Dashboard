@@ -87,7 +87,7 @@ function Procurement() {
   const [showModal, setShowModal] = useState(false);
   const [pickupDate, setPickupDate] = useState(null);
   const [formData, setFormData] = useState({
-    farmerId: "",
+    customerId: "",
     crops: [{ ...EMPTY_CROP }],
     pickupLocation: "",
     godown: "",
@@ -99,7 +99,7 @@ function Procurement() {
   /* EDIT FORM */
   const [editOrder, setEditOrder] = useState(null);
   const [editForm, setEditForm] = useState({
-    farmer: "",
+    customer: "",
     crops: [{ ...EMPTY_CROP }],
     procurementDate: "",
     procurementCenter: "",
@@ -122,12 +122,12 @@ function Procurement() {
     .filter((o) => {
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase();
-      const farmerName =
-        `${o.farmer?.firstName ?? ""} ${o.farmer?.lastName ?? ""}`.toLowerCase();
+      const customerName =
+        `${o.customer?.firstName ?? ""} ${o.customer?.lastName ?? ""}`.toLowerCase();
       const crops =
         o.crops?.map((c) => c.cropName?.toLowerCase()).join(" ") ?? "";
       const center = o.procurementCenter?.toLowerCase() ?? "";
-      return farmerName.includes(q) || crops.includes(q) || center.includes(q);
+      return customerName.includes(q) || crops.includes(q) || center.includes(q);
     });
 
   const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
@@ -141,7 +141,7 @@ function Procurement() {
   const handleEdit = (order) => {
     setEditOrder(order);
     setEditForm({
-      farmer: order.farmer?._id ?? "",
+      customer: order.customer?._id ?? "",
       purchaseId: order.purchaseId ?? "",
       crops: order.crops?.map((c) => ({
         cropName: c.cropName ?? "",
@@ -222,7 +222,7 @@ function Procurement() {
 
   const submitOrder = () => {
     const payload = {
-      farmer: formData.farmerId,
+      customer: formData.customerId,
       crops: formData.crops.map((c) => ({
         cropName: c.cropName,
         variety: c.variety,
@@ -236,7 +236,6 @@ function Procurement() {
       vehicle: formData.vehicle,
       remarks: formData.notes,
       previousDues: Number(formData.previousDues) || 0,
-      status: "pending",
     };
 
     dispatch(createOrder(payload))
@@ -246,7 +245,7 @@ function Procurement() {
         toast.success("Purchase order created successfully");
         setShowModal(false);
         setFormData({
-          farmerId: "",
+          customerId: "",
           crops: [{ ...EMPTY_CROP }],
           pickupLocation: "",
           godown: "",
@@ -293,7 +292,7 @@ function Procurement() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
         <input
           type="text"
-          placeholder="Search by farmer, crop, or center..."
+          placeholder="Search by customer, crop, or center..."
           value={searchQuery}
           onChange={(e) => {
             setSearchQuery(e.target.value);
@@ -390,7 +389,7 @@ function Procurement() {
           <thead className="bg-gray-50 text-xs uppercase">
             <tr>
               <th className="px-4 py-3 text-left">PO ID</th>
-              <th className="px-4 py-3 text-left">Farmer</th>
+              <th className="px-4 py-3 text-left">customer</th>
               <th className="px-4 py-3 text-left">Crops</th>
               <th className="px-4 py-3 text-left">Center</th>
               <th className="px-4 py-3 text-left">Date</th>
@@ -412,7 +411,7 @@ function Procurement() {
                     PO-{String(startIndex + index + 1).padStart(3, "0")}
                   </td>
                   <td className="px-4 py-4">
-                    {order.farmer?.firstName} {order.farmer?.lastName}
+                    {order.customer?.firstName} {order.customer?.lastName}
                   </td>
                   <td className="px-4 py-4">
                     {order.crops?.map((c, i) => (
@@ -513,95 +512,130 @@ function Procurement() {
       )}
 
       {/* VIEW MODAL */}
-      {viewOrder && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-2xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">Purchase Order Details</h2>
-              <button
-                onClick={() => setViewOrder(null)}
-                className="text-gray-400 hover:text-gray-600 text-xl"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <p className="text-gray-500 text-xs">Farmer</p>
-                <p className="font-medium">
-                  {viewOrder.farmer?.firstName} {viewOrder.farmer?.lastName}
-                </p>
+      {viewOrder && (() => {
+        const statusCfg = getStatusConfig(viewOrder.status || "pending");
+        const StatusIcon = statusCfg.icon;
+        const poIndex = orders.findIndex((o) => o._id === viewOrder._id);
+        const poId = `PO-${String(poIndex + 1).padStart(3, "0")}`;
+        return (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto">
+              {/* Header */}
+              <div className="flex justify-between items-center px-6 py-4 border-b">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-800">Purchase Order Details</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">{poId}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${statusCfg.color}`}>
+                    <StatusIcon size={11} />
+                    {statusCfg.label}
+                  </span>
+                  <button onClick={() => setViewOrder(null)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">
+                    ✕
+                  </button>
+                </div>
               </div>
-              <div>
-                <p className="text-gray-500 text-xs">Date</p>
-                <p className="font-medium">
-                  {formatDate(viewOrder.procurementDate)}
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-xs">Center</p>
-                <p className="font-medium">
-                  {viewOrder.procurementCenter || "—"}
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-xs">Godown</p>
-                <p className="font-medium">{viewOrder.godown || "—"}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-xs">Vehicle</p>
-                <p className="font-medium">{viewOrder.vehicle || "—"}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-xs">Previous Dues</p>
-                <p className="font-medium">₹{viewOrder.previousDues || 0}</p>
-              </div>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 mb-2">Crops</p>
-              <table className="w-full text-sm border rounded-lg overflow-hidden">
-                <thead className="bg-gray-50 text-xs">
-                  <tr>
-                    <th className="px-3 py-2 text-left">Crop</th>
-                    <th className="px-3 py-2 text-left">Variety</th>
-                    <th className="px-3 py-2 text-right">Quantity</th>
-                    <th className="px-3 py-2 text-right">Rate (₹)</th>
-                    <th className="px-3 py-2 text-right">Amount (₹)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {viewOrder.crops?.map((c, i) => (
-                    <tr key={i}>
-                      <td className="px-3 py-2">{c.cropName}</td>
-                      <td className="px-3 py-2">{c.variety || "—"}</td>
-                      <td className="px-3 py-2 text-right">
-                        {c.quantity} {c.unit || "qtl"}
-                      </td>
-                      <td className="px-3 py-2 text-right">₹{c.rate}</td>
-                      <td className="px-3 py-2 text-right font-medium">
-                        ₹
-                        {(Number(c.quantity) * Number(c.rate)).toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="flex justify-between items-center pt-2 border-t">
-              <div>
+
+              <div className="px-6 py-4 space-y-4">
+                {/* Info grid */}
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                  <div>
+                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Customer</p>
+                    <p className="font-semibold text-gray-800">
+                      {viewOrder.customer?.firstName} {viewOrder.customer?.lastName}
+                    </p>
+                    {viewOrder.customer?.phone && (
+                      <p className="text-xs text-gray-500 mt-0.5">{viewOrder.customer.phone}</p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Date</p>
+                    <p className="font-semibold text-gray-800">{formatDate(viewOrder.procurementDate)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Center</p>
+                    <p className="font-semibold text-gray-800">{viewOrder.procurementCenter || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Godown</p>
+                    <p className="font-semibold text-gray-800">{viewOrder.godown || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Vehicle</p>
+                    <p className="font-semibold text-gray-800">{viewOrder.vehicle || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-0.5">Previous Dues</p>
+                    <p className="font-semibold text-gray-800">₹{(viewOrder.previousDues || 0).toLocaleString()}</p>
+                  </div>
+                </div>
+
+                {/* Crops table */}
+                <div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide mb-2">Crops</p>
+                  <div className="border rounded-xl overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500">Crop</th>
+                          <th className="px-3 py-2.5 text-left text-xs font-semibold text-gray-500">Variety</th>
+                          <th className="px-3 py-2.5 text-right text-xs font-semibold text-gray-500">Quantity</th>
+                          <th className="px-3 py-2.5 text-right text-xs font-semibold text-gray-500">Rate (₹)</th>
+                          <th className="px-3 py-2.5 text-right text-xs font-semibold text-gray-500">Amount (₹)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {viewOrder.crops?.map((c, i) => (
+                          <tr key={i} className="hover:bg-gray-50">
+                            <td className="px-3 py-2.5 font-medium text-gray-800">{c.cropName}</td>
+                            <td className="px-3 py-2.5 text-gray-500">{c.variety || "—"}</td>
+                            <td className="px-3 py-2.5 text-right">{c.quantity} {c.unit || "qtl"}</td>
+                            <td className="px-3 py-2.5 text-right">₹{c.rate}</td>
+                            <td className="px-3 py-2.5 text-right font-semibold text-gray-800">
+                              ₹{(Number(c.quantity) * Number(c.rate)).toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Remarks */}
                 {viewOrder.remarks && (
-                  <p className="text-xs text-gray-500">
-                    Remarks: {viewOrder.remarks}
-                  </p>
+                  <div className="bg-gray-50 rounded-xl px-4 py-3">
+                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Remarks</p>
+                    <p className="text-sm text-gray-700">{viewOrder.remarks}</p>
+                  </div>
                 )}
+
+                {/* Total */}
+                <div className="flex justify-between items-center pt-3 border-t">
+                  <p className="text-sm text-gray-500">Grand Total</p>
+                  <p className="text-xl font-bold text-brand-700">₹{Number(viewOrder.totalAmount || 0).toLocaleString()}</p>
+                </div>
               </div>
-              <p className="text-base font-bold text-brand-700">
-                Total: ₹{viewOrder.totalAmount}
-              </p>
+
+              {/* Footer actions */}
+              <div className="px-6 py-4 border-t flex justify-end gap-2">
+                <button
+                  onClick={() => { handleEdit(viewOrder); setViewOrder(null); }}
+                  className="px-4 py-2 text-sm border border-yellow-500 text-yellow-600 rounded-lg hover:bg-yellow-50"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => setViewOrder(null)}
+                  className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {confirmId && (
         <ConfirmDialog
@@ -620,12 +654,12 @@ function Procurement() {
 
             <select
               className="w-full border px-3 py-2 rounded-lg text-sm"
-              value={editForm.farmer}
+              value={editForm.customer}
               onChange={(e) =>
-                setEditForm({ ...editForm, farmer: e.target.value })
+                setEditForm({ ...editForm, customer: e.target.value })
               }
             >
-              <option value="">Select Farmer</option>
+              <option value="">Select customer</option>
               {members.map((f) => (
                 <option key={f._id} value={f._id}>
                   {f.firstName} {f.lastName}
@@ -781,13 +815,13 @@ function Procurement() {
             <h2 className="text-xl font-semibold">Create Purchase Order</h2>
 
             <select
-              value={formData.farmerId}
+              value={formData.customerId}
               onChange={(e) =>
-                setFormData({ ...formData, farmerId: e.target.value })
+                setFormData({ ...formData, customerId: e.target.value })
               }
               className="w-full border px-3 py-2 rounded-lg text-sm"
             >
-              <option value="">Select Farmer</option>
+              <option value="">Select customer</option>
               {members.map((f) => (
                 <option key={f._id} value={f._id}>
                   {f.firstName} {f.lastName}

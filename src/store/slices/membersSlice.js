@@ -1,5 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { fetchMembers, deleteMember, updateMember, createStaff, createFarmer, updateKyc } from '../thunks/membersThunk';
+import { fetchMembers, deleteMember, updateMember, createStaff, createCustomer, updateKyc } from '../thunks/membersThunk';
 
 const membersSlice = createSlice({
   name: 'members',
@@ -29,7 +29,7 @@ const membersSlice = createSlice({
       .addCase(createStaff.fulfilled, (state, action) => {
         if (action.payload?._id || action.payload?.id) state.members.unshift(action.payload);
       })
-      .addCase(createFarmer.fulfilled, (state, action) => {
+      .addCase(createCustomer.fulfilled, (state, action) => {
         if (action.payload?._id || action.payload?.id) state.members.unshift(action.payload);
       });
   },
